@@ -266,7 +266,8 @@ export default function HeaderPage() {
                 </Button>
               </div>
             </div>
-          </CardHeader>
+          </div>
+        </CardHeader>
         <CardContent>
           <div className="border rounded-lg overflow-hidden bg-white">{renderHeaderPreview()}</div>
         </CardContent>
@@ -499,4 +500,4 @@ export default function HeaderPage() {
       </div>
     </div>
   )
-}\
+}

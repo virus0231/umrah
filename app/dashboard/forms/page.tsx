@@ -490,7 +490,9 @@ export default function FormsPage() {
                   <CardTitle className="text-lg">{form.formName}</CardTitle>
                   <p className="text-sm text-gray-600 mt-1">{form.fieldsConfig.description}</p>
                 </div>
-                <Badge variant="outline">{form.fieldsConfig.fields.length} fields</Badge>
+                <Badge variant="outline">
+                  {form.fieldsConfig?.fields?.length ? `${form.fieldsConfig.fields.length} fields` : "No fields"}
+                </Badge>
               </div>
             </CardHeader>
             <CardContent>
@@ -618,7 +620,7 @@ export default function FormsPage() {
                   </div>
 
                   <div className="space-y-6">
-                    {formData.fields.map((field) => (
+                    {formData.fields?.map((field) => (
                       <Card key={field.id} className="p-4">
                         <div className="space-y-4">
                           <div className="flex items-center justify-between">

@@ -37,7 +37,7 @@ export const initDatabase = async () => {
         lastName: "Admin",
         email: "admin@hajiandumrah.co.uk",
         passwordHash: hashedPassword,
-        role: "admin",
+        role: "superadmin",
       })
       console.log("Default admin user created.")
     }

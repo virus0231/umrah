@@ -1,12 +1,18 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { User } from "@/models"
 import bcrypt from "bcryptjs"
+import { Sequelize } from "sequelize";
 
 export async function GET() {
   try {
     const users = await User.findAll({
       attributes: ["id", "firstName", "lastName", "email", "role", "createdAt"],
       order: [["createdAt", "DESC"]],
+       where: {
+        role: { 
+          [Sequelize.Op.ne]: 'superadmin'  // Excludes 'superadmin' role
+        }
+      }
     })
 
     return NextResponse.json(users)

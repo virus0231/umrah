@@ -8,7 +8,7 @@ class User extends Model {
   public lastName!: string
   public email!: string
   public passwordHash!: string
-  public role!: "admin" | "user" | "marketing"
+  public role!: "superadmin" | "admin" | "user" | "marketing"
   public readonly createdAt!: Date
   public readonly updatedAt!: Date
 
@@ -41,7 +41,7 @@ User.init(
       allowNull: false,
     },
     role: {
-      type: DataTypes.ENUM("admin", "user", "marketing"),
+      type: DataTypes.ENUM("superadmin", "admin", "user", "marketing"),
       defaultValue: "user",
     },
   },
