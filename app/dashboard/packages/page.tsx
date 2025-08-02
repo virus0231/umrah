@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,17 +11,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Edit, Trash2, Star, Upload, X, FileText, Building, MapPin } from "lucide-react"
+import { Plus, Edit, Trash2, Star, Upload, X, FileText, Building, MapPin, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
 
 interface Package {
   id: string
   title: string
-  image: string
+  description?: string
+  imageUrl: string
   uploadedImage?: string
   gallery: string[]
-  stars: number
+  starRating: number
   nights: number
   hotels: {
     makkah: string[]
@@ -32,7 +33,9 @@ interface Package {
   packageIncludes: string[]
   hotelMakkahDetails: string
   hotelMedinaDetails: string
+  status: string
   createdAt: string
+  updatedAt: string
 }
 
 const predefinedCategories = [
@@ -58,61 +61,22 @@ const defaultPackageIncludes = [
   "Direct Flights Can Be Arranged On Special Request",
 ]
 
-const initialPackages: Package[] = [
-  {
-    id: "1",
-    title: "Executive Umrah Package for 07 Nights",
-    image: "/placeholder.svg?height=200&width=300",
-    gallery: [],
-    stars: 5,
-    nights: 7,
-    hotels: {
-      makkah: ["Hilton Makkah"],
-      medina: ["Madinah Hilton"],
-    },
-    price: 1560,
-    category: "Executive Package",
-    packageIncludes: [...defaultPackageIncludes],
-    hotelMakkahDetails:
-      "Located in Mecca, offering modern accommodation with views of the Masjid Al Haram. Free Wi-Fi access is available throughout the entire property.",
-    hotelMedinaDetails:
-      "Offering luxuriously decorated rooms with a balcony, strategically located 200 m from Haram. The King Abdul Aziz historical library is a 10-minute walk away.",
-    createdAt: "2024-01-15",
-  },
-  {
-    id: "2",
-    title: "Economy Umrah Package for 07 Nights",
-    image: "/placeholder.svg?height=200&width=300",
-    gallery: [],
-    stars: 3,
-    nights: 7,
-    hotels: {
-      makkah: ["Al Safwa Hotel"],
-      medina: ["Madinah Palace"],
-    },
-    price: 750,
-    category: "Economy Package",
-    packageIncludes: [...defaultPackageIncludes],
-    hotelMakkahDetails:
-      "Budget-friendly accommodation with essential amenities and close proximity to Masjid Al Haram.",
-    hotelMedinaDetails: "Comfortable rooms with basic facilities, walking distance to the Prophet's Mosque.",
-    createdAt: "2024-01-16",
-  },
-]
-
 export default function PackagesPage() {
-  const [packages, setPackages] = useState<Package[]>(initialPackages)
+  const [packages, setPackages] = useState<Package[]>([])
   const [categories, setCategories] = useState<string[]>(predefinedCategories)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingPackage, setEditingPackage] = useState<Package | null>(null)
   const [newCategory, setNewCategory] = useState("")
   const [showNewCategoryInput, setShowNewCategoryInput] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const galleryInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
 
   const [formData, setFormData] = useState({
     title: "",
+    description: "",
     image: "",
     uploadedImage: "",
     gallery: [] as string[],
@@ -128,6 +92,33 @@ export default function PackagesPage() {
     hotelMakkahDetails: "",
     hotelMedinaDetails: "",
   })
+
+  // Fetch packages from API
+  const fetchPackages = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/packages')
+      if (!response.ok) {
+        throw new Error('Failed to fetch packages')
+      }
+      const data = await response.json()
+      setPackages(data)
+    } catch (error) {
+      console.error('Error fetching packages:', error)
+      toast({
+        title: "Error",
+        description: "Failed to fetch packages. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Load packages on component mount
+  useEffect(() => {
+    fetchPackages()
+  }, [])
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -151,7 +142,7 @@ export default function PackagesPage() {
       })
       setFormData({
         ...formData,
-        gallery: [...formData.gallery, ...newImages],
+        gallery: [...(Array.isArray(formData.gallery) ? formData.gallery : []), ...newImages],
       })
       toast({
         title: "Gallery Images Added",
@@ -161,7 +152,8 @@ export default function PackagesPage() {
   }
 
   const removeGalleryImage = (index: number) => {
-    const newGallery = formData.gallery.filter((_, i) => i !== index)
+    const currentGallery = Array.isArray(formData.gallery) ? formData.gallery : []
+    const newGallery = currentGallery.filter((_, i) => i !== index)
     setFormData({ ...formData, gallery: newGallery })
   }
 
@@ -178,34 +170,83 @@ export default function PackagesPage() {
     }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setSubmitting(true)
 
-    if (editingPackage) {
-      setPackages(packages.map((pkg) => (pkg.id === editingPackage.id ? { ...pkg, ...formData } : pkg)))
-      toast({
-        title: "Package Updated",
-        description: "Package has been successfully updated.",
-      })
-    } else {
-      const newPackage: Package = {
-        id: Date.now().toString(),
-        ...formData,
-        createdAt: new Date().toISOString().split("T")[0],
+    try {
+      const packageData = {
+        title: formData.title,
+        description: formData.description,
+        image: formData.uploadedImage || formData.image,
+        uploadedImage: formData.uploadedImage,
+        gallery: formData.gallery,
+        stars: formData.stars,
+        nights: formData.nights,
+        hotels: formData.hotels,
+        price: formData.price,
+        category: formData.category,
+        packageIncludes: formData.packageIncludes,
+        hotelMakkahDetails: formData.hotelMakkahDetails,
+        hotelMedinaDetails: formData.hotelMedinaDetails,
       }
-      setPackages([...packages, newPackage])
-      toast({
-        title: "Package Created",
-        description: "New package has been successfully created.",
-      })
-    }
 
-    resetForm()
+      if (editingPackage) {
+        // For updates, you'll need to implement PUT endpoint in your API
+        const response = await fetch(`/api/packages/${editingPackage.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(packageData),
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to update package')
+        }
+
+        toast({
+          title: "Package Updated",
+          description: "Package has been successfully updated.",
+        })
+      } else {
+        const response = await fetch('/api/packages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(packageData),
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to create package')
+        }
+
+        toast({
+          title: "Package Created",
+          description: "New package has been successfully created.",
+        })
+      }
+
+      // Refresh the packages list
+      await fetchPackages()
+      resetForm()
+    } catch (error) {
+      console.error('Error saving package:', error)
+      toast({
+        title: "Error",
+        description: "Failed to save package. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const resetForm = () => {
     setFormData({
       title: "",
+      description: "",
       image: "",
       uploadedImage: "",
       gallery: [],
@@ -231,57 +272,89 @@ export default function PackagesPage() {
     setEditingPackage(pkg)
     setFormData({
       title: pkg.title,
-      image: pkg.image,
+      description: pkg.description || "",
+      image: pkg.imageUrl || "",
       uploadedImage: pkg.uploadedImage || "",
-      gallery: pkg.gallery || [],
-      stars: pkg.stars,
-      nights: pkg.nights,
-      hotels: pkg.hotels,
-      price: pkg.price,
-      category: pkg.category,
-      packageIncludes: pkg.packageIncludes,
-      hotelMakkahDetails: pkg.hotelMakkahDetails,
-      hotelMedinaDetails: pkg.hotelMedinaDetails,
+      gallery: Array.isArray(pkg.gallery) ? pkg.gallery : [],
+      stars: pkg.starRating || 1,
+      nights: pkg.nights || 7,
+      hotels: pkg.hotels || { makkah: [""], medina: [""] },
+      price: pkg.price || 0,
+      category: pkg.category || "",
+      packageIncludes: Array.isArray(pkg.packageIncludes) ? pkg.packageIncludes : [...defaultPackageIncludes],
+      hotelMakkahDetails: pkg.hotelMakkahDetails || "",
+      hotelMedinaDetails: pkg.hotelMedinaDetails || "",
     })
     setIsDialogOpen(true)
   }
 
-  const handleDelete = (packageId: string) => {
-    setPackages(packages.filter((pkg) => pkg.id !== packageId))
-    toast({
-      title: "Package Deleted",
-      description: "Package has been successfully removed.",
-    })
+  const handleDelete = async (packageId: string) => {
+    if (!confirm('Are you sure you want to delete this package?')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/packages/${packageId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete package')
+      }
+
+      toast({
+        title: "Package Deleted",
+        description: "Package has been successfully removed.",
+      })
+
+      // Refresh the packages list
+      await fetchPackages()
+    } catch (error) {
+      console.error('Error deleting package:', error)
+      toast({
+        title: "Error",
+        description: "Failed to delete package. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   const addHotel = (location: "makkah" | "medina") => {
+    const currentHotels = formData.hotels || { makkah: [""], medina: [""] }
+    const locationHotels = currentHotels[location] || [""]
+    
     setFormData({
       ...formData,
       hotels: {
-        ...formData.hotels,
-        [location]: [...formData.hotels[location], ""],
+        ...currentHotels,
+        [location]: [...locationHotels, ""],
       },
     })
   }
 
   const removeHotel = (location: "makkah" | "medina", index: number) => {
+    const currentHotels = formData.hotels || { makkah: [""], medina: [""] }
+    const locationHotels = currentHotels[location] || [""]
+    
     setFormData({
       ...formData,
       hotels: {
-        ...formData.hotels,
-        [location]: formData.hotels[location].filter((_, i) => i !== index),
+        ...currentHotels,
+        [location]: locationHotels.filter((_, i) => i !== index),
       },
     })
   }
 
   const updateHotel = (location: "makkah" | "medina", index: number, value: string) => {
-    const newHotels = [...formData.hotels[location]]
-    newHotels[index] = value
+    const currentHotels = formData.hotels || { makkah: [""], medina: [""] }
+    const locationHotels = [...(currentHotels[location] || [""])]
+    locationHotels[index] = value
+    
     setFormData({
       ...formData,
       hotels: {
-        ...formData.hotels,
-        [location]: newHotels,
+        ...currentHotels,
+        [location]: locationHotels,
       },
     })
   }
@@ -316,7 +389,16 @@ export default function PackagesPage() {
   }
 
   const getDisplayImage = (pkg: Package) => {
-    return pkg.uploadedImage || pkg.image || "/placeholder.svg"
+    return pkg.uploadedImage || pkg.imageUrl || "/placeholder.svg"
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin" />
+        <span className="ml-2">Loading packages...</span>
+      </div>
+    )
   }
 
   return (
@@ -366,6 +448,17 @@ export default function PackagesPage() {
                       onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                       placeholder="e.g., Executive Umrah Package for 07 Nights"
                       required
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="description">Package Description</Label>
+                    <Textarea
+                      id="description"
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      placeholder="Brief description of the package..."
+                      rows={3}
                     />
                   </div>
 
@@ -492,7 +585,7 @@ export default function PackagesPage() {
                         className="hidden"
                       />
 
-                      {formData.gallery.length > 0 && (
+                      {Array.isArray(formData.gallery) && formData.gallery.length > 0 && (
                         <div className="grid grid-cols-4 gap-2">
                           {formData.gallery.map((image, index) => (
                             <div key={index} className="relative">
@@ -592,7 +685,7 @@ export default function PackagesPage() {
                   <div>
                     <Label>Hotel Names in Makkah</Label>
                     <div className="space-y-2">
-                      {formData.hotels.makkah.map((hotel, index) => (
+                      {(formData.hotels?.makkah || [""]).map((hotel, index) => (
                         <div key={index} className="flex gap-2">
                           <Input
                             value={hotel}
@@ -600,7 +693,7 @@ export default function PackagesPage() {
                             placeholder={`Makkah Hotel ${index + 1} name`}
                             required
                           />
-                          {formData.hotels.makkah.length > 1 && (
+                          {(formData.hotels?.makkah || []).length > 1 && (
                             <Button type="button" variant="outline" onClick={() => removeHotel("makkah", index)}>
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -630,7 +723,7 @@ export default function PackagesPage() {
                   <div>
                     <Label>Hotel Names in Medina</Label>
                     <div className="space-y-2">
-                      {formData.hotels.medina.map((hotel, index) => (
+                      {(formData.hotels?.medina || [""]).map((hotel, index) => (
                         <div key={index} className="flex gap-2">
                           <Input
                             value={hotel}
@@ -638,7 +731,7 @@ export default function PackagesPage() {
                             placeholder={`Medina Hotel ${index + 1} name`}
                             required
                           />
-                          {formData.hotels.medina.length > 1 && (
+                          {(formData.hotels?.medina || []).length > 1 && (
                             <Button type="button" variant="outline" onClick={() => removeHotel("medina", index)}>
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -665,7 +758,8 @@ export default function PackagesPage() {
                 </TabsContent>
 
                 <div className="flex gap-2 pt-4">
-                  <Button type="submit" className="flex-1">
+                  <Button type="submit" className="flex-1" disabled={submitting}>
+                    {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                     {editingPackage ? "Update Package" : "Create Package"}
                   </Button>
                   <Button type="button" variant="outline" onClick={resetForm}>
@@ -684,7 +778,7 @@ export default function PackagesPage() {
             <div className="relative h-48">
               <Image src={getDisplayImage(pkg) || "/placeholder.svg"} alt={pkg.title} fill className="object-cover" />
               <div className="absolute top-2 right-2 bg-white rounded-full px-2 py-1 flex items-center gap-1">
-                {renderStars(pkg.stars)}
+                {renderStars(pkg.starRating)}
               </div>
               {pkg.uploadedImage && (
                 <div className="absolute top-2 left-2">
@@ -716,12 +810,16 @@ export default function PackagesPage() {
             <CardContent className="space-y-3">
               <div>
                 <Label className="text-sm font-medium">Makkah Hotels:</Label>
-                <div className="text-sm text-gray-600">{pkg.hotels.makkah.join(", ")}</div>
+                <div className="text-sm text-gray-600">
+                  {pkg.hotels?.makkah?.length ? pkg.hotels.makkah.join(", ") : "No hotels specified"}
+                </div>
               </div>
 
               <div>
                 <Label className="text-sm font-medium">Medina Hotels:</Label>
-                <div className="text-sm text-gray-600">{pkg.hotels.medina.join(", ")}</div>
+                <div className="text-sm text-gray-600">
+                  {pkg.hotels?.medina?.length ? pkg.hotels.medina.join(", ") : "No hotels specified"}
+                </div>
               </div>
 
               <div className="flex gap-2 pt-2">
@@ -744,6 +842,12 @@ export default function PackagesPage() {
           </Card>
         ))}
       </div>
+
+      {packages.length === 0 && !loading && (
+        <div className="text-center py-12">
+          <p className="text-gray-500 text-lg">No packages found. Create your first package!</p>
+        </div>
+      )}
     </div>
   )
 }

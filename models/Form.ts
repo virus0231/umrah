@@ -22,6 +22,10 @@ Form.init(
       type: DataTypes.STRING(100),
       allowNull: false,
     },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
     formType: {
       type: DataTypes.STRING(50),
       allowNull: false,

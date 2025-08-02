@@ -22,10 +22,6 @@ FormSubmission.init(
     formId: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      references: {
-        model: "forms",
-        key: "id",
-      },
       onDelete: "CASCADE",
     },
     submissionData: {

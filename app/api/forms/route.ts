@@ -21,7 +21,8 @@ export async function POST(request: NextRequest) {
     const form = await Form.create({
       formName: name,
       formType: "custom",
-      fieldsConfig: { fields, description },
+      fieldsConfig: { fields },
+      description: description,
       customScript: customScript || "",
     })
 

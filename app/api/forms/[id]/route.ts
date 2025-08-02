@@ -8,7 +8,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     await Form.update(
       {
         formName: name,
-        fieldsConfig: { fields, description },
+        fieldsConfig: { fields },
+        description: description,
         customScript: customScript || "",
       },
       {
