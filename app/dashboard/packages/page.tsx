@@ -1,41 +1,64 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState, useRef, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
-import { Plus, Edit, Trash2, Star, Upload, X, FileText, Building, MapPin, Loader2 } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
-import Image from "next/image"
+import type React from "react";
+import { useState, useRef, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Star,
+  Upload,
+  X,
+  FileText,
+  Building,
+  MapPin,
+  Loader2,
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import Image from "next/image";
 
 interface Package {
-  id: string
-  title: string
-  description?: string
-  imageUrl: string
-  uploadedImage?: string
-  gallery: string[]
-  starRating: number
-  nights: number
+  id: string;
+  title: string;
+  description?: string;
+  imageUrl: string;
+  uploadedImage?: string;
+  gallery: string[];
+  starRating: number;
+  nights: number;
   hotels: {
-    makkah: string[]
-    medina: string[]
-  }
-  price: number
-  category: string
-  packageIncludes: string[]
-  hotelMakkahDetails: string
-  hotelMedinaDetails: string
-  status: string
-  createdAt: string
-  updatedAt: string
+    makkah: string[];
+    medina: string[];
+  };
+  price: number;
+  category: string;
+  packageIncludes: string[];
+  hotelMakkahDetails: string;
+  hotelMedinaDetails: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 const predefinedCategories = [
@@ -49,7 +72,7 @@ const predefinedCategories = [
   "Ramadan Economy Package",
   "Ramadan Premium Package",
   "Ramadan Executive Package",
-]
+];
 
 const defaultPackageIncludes = [
   "Visa",
@@ -59,20 +82,20 @@ const defaultPackageIncludes = [
   "All Packages Are Based On Quad Sharing",
   "Ground Transfers Can Be Included On Extra Cost",
   "Direct Flights Can Be Arranged On Special Request",
-]
+];
 
 export default function PackagesPage() {
-  const [packages, setPackages] = useState<Package[]>([])
-  const [categories, setCategories] = useState<string[]>(predefinedCategories)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [editingPackage, setEditingPackage] = useState<Package | null>(null)
-  const [newCategory, setNewCategory] = useState("")
-  const [showNewCategoryInput, setShowNewCategoryInput] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const galleryInputRef = useRef<HTMLInputElement>(null)
-  const { toast } = useToast()
+  const [packages, setPackages] = useState<Package[]>([]);
+  const [categories, setCategories] = useState<string[]>(predefinedCategories);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingPackage, setEditingPackage] = useState<Package | null>(null);
+  const [newCategory, setNewCategory] = useState("");
+  const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   const [formData, setFormData] = useState({
     title: "",
@@ -91,88 +114,96 @@ export default function PackagesPage() {
     packageIncludes: [...defaultPackageIncludes],
     hotelMakkahDetails: "",
     hotelMedinaDetails: "",
-  })
+  });
 
   // Fetch packages from API
   const fetchPackages = async () => {
     try {
-      setLoading(true)
-      const response = await fetch('/api/packages')
+      setLoading(true);
+      const response = await fetch("/api/packages");
       if (!response.ok) {
-        throw new Error('Failed to fetch packages')
+        throw new Error("Failed to fetch packages");
       }
-      const data = await response.json()
-      setPackages(data)
+      const data = await response.json();
+
+      console.log("Fetched packages:", data);
+
+      setPackages(data);
     } catch (error) {
-      console.error('Error fetching packages:', error)
+      console.error("Error fetching packages:", error);
       toast({
         title: "Error",
         description: "Failed to fetch packages. Please try again.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   // Load packages on component mount
   useEffect(() => {
-    fetchPackages()
-  }, [])
+    fetchPackages();
+  }, []);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
+    const file = event.target.files?.[0];
     if (file) {
-      const imageUrl = URL.createObjectURL(file)
-      setFormData({ ...formData, uploadedImage: imageUrl })
+      const imageUrl = URL.createObjectURL(file);
+      setFormData({ ...formData, uploadedImage: imageUrl });
       toast({
         title: "Image Uploaded",
         description: "Main image has been successfully uploaded.",
-      })
+      });
     }
-  }
+  };
 
   const handleGalleryUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files
+    const files = event.target.files;
     if (files) {
-      const newImages: string[] = []
+      const newImages: string[] = [];
       Array.from(files).forEach((file) => {
-        const imageUrl = URL.createObjectURL(file)
-        newImages.push(imageUrl)
-      })
+        const imageUrl = URL.createObjectURL(file);
+        newImages.push(imageUrl);
+      });
       setFormData({
         ...formData,
-        gallery: [...(Array.isArray(formData.gallery) ? formData.gallery : []), ...newImages],
-      })
+        gallery: [
+          ...(Array.isArray(formData.gallery) ? formData.gallery : []),
+          ...newImages,
+        ],
+      });
       toast({
         title: "Gallery Images Added",
         description: `${newImages.length} image(s) added to gallery.`,
-      })
+      });
     }
-  }
+  };
 
   const removeGalleryImage = (index: number) => {
-    const currentGallery = Array.isArray(formData.gallery) ? formData.gallery : []
-    const newGallery = currentGallery.filter((_, i) => i !== index)
-    setFormData({ ...formData, gallery: newGallery })
-  }
+    const currentGallery = Array.isArray(formData.gallery)
+      ? formData.gallery
+      : [];
+    const newGallery = currentGallery.filter((_, i) => i !== index);
+    setFormData({ ...formData, gallery: newGallery });
+  };
 
   const addNewCategory = () => {
     if (newCategory.trim() && !categories.includes(newCategory.trim())) {
-      setCategories([...categories, newCategory.trim()])
-      setFormData({ ...formData, category: newCategory.trim() })
-      setNewCategory("")
-      setShowNewCategoryInput(false)
+      setCategories([...categories, newCategory.trim()]);
+      setFormData({ ...formData, category: newCategory.trim() });
+      setNewCategory("");
+      setShowNewCategoryInput(false);
       toast({
         title: "Category Added",
         description: "New category has been added successfully.",
-      })
+      });
     }
-  }
+  };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSubmitting(true)
+  const handleSubmit23 = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
 
     try {
       const packageData = {
@@ -189,59 +220,124 @@ export default function PackagesPage() {
         packageIncludes: formData.packageIncludes,
         hotelMakkahDetails: formData.hotelMakkahDetails,
         hotelMedinaDetails: formData.hotelMedinaDetails,
-      }
+      };
 
       if (editingPackage) {
         // For updates, you'll need to implement PUT endpoint in your API
         const response = await fetch(`/api/packages/${editingPackage.id}`, {
-          method: 'PUT',
+          method: "PUT",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify(packageData),
-        })
+        });
 
         if (!response.ok) {
-          throw new Error('Failed to update package')
+          throw new Error("Failed to update package");
         }
 
         toast({
           title: "Package Updated",
           description: "Package has been successfully updated.",
-        })
+        });
       } else {
-        const response = await fetch('/api/packages', {
-          method: 'POST',
+        const response = await fetch("/api/packages", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify(packageData),
-        })
+        });
 
         if (!response.ok) {
-          throw new Error('Failed to create package')
+          throw new Error("Failed to create package");
         }
 
         toast({
           title: "Package Created",
           description: "New package has been successfully created.",
-        })
+        });
       }
 
       // Refresh the packages list
-      await fetchPackages()
-      resetForm()
+      await fetchPackages();
+      resetForm();
     } catch (error) {
-      console.error('Error saving package:', error)
+      console.error("Error saving package:", error);
       toast({
         title: "Error",
         description: "Failed to save package. Please try again.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+
+    try {
+      const form = new FormData();
+
+      form.append("title", formData.title);
+      form.append("description", formData.description);
+      form.append("stars", formData.stars.toString());
+      form.append("nights", formData.nights.toString());
+      form.append("price", formData.price.toString());
+      form.append("category", formData.category);
+      form.append("hotelMakkahDetails", formData.hotelMakkahDetails);
+      form.append("hotelMedinaDetails", formData.hotelMedinaDetails);
+      form.append("packageIncludes", JSON.stringify(formData.packageIncludes));
+      form.append("hotels", JSON.stringify(formData.hotels));
+
+      // If uploadedImage is a file, append it
+      if (fileInputRef.current?.files?.[0]) {
+        form.append("uploadedImage", fileInputRef.current.files[0]);
+      }
+
+      // Add gallery images
+      if (galleryInputRef.current?.files) {
+        for (const file of galleryInputRef.current.files) {
+          form.append("gallery", file);
+        }
+      }
+
+      const method = editingPackage ? "PUT" : "POST";
+      const url = editingPackage
+        ? `/api/packages/${editingPackage.id}`
+        : "/api/packages";
+
+      const response = await fetch(url, {
+        method,
+        body: form,
+      });
+
+      if (!response.ok) {
+        throw new Error(editingPackage ? "Update failed" : "Creation failed");
+      }
+
+      toast({
+        title: editingPackage ? "Package Updated" : "Package Created",
+        description: `Package has been successfully ${
+          editingPackage ? "updated" : "created"
+        }.`,
+      });
+
+      await fetchPackages();
+      resetForm();
+    } catch (error) {
+      console.error("Error saving package:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save package. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const resetForm = () => {
     setFormData({
@@ -261,136 +357,155 @@ export default function PackagesPage() {
       packageIncludes: [...defaultPackageIncludes],
       hotelMakkahDetails: "",
       hotelMedinaDetails: "",
-    })
-    setEditingPackage(null)
-    setIsDialogOpen(false)
-    setShowNewCategoryInput(false)
-    setNewCategory("")
-  }
+    });
+    setEditingPackage(null);
+    setIsDialogOpen(false);
+    setShowNewCategoryInput(false);
+    setNewCategory("");
+  };
 
   const handleEdit = (pkg: Package) => {
-    setEditingPackage(pkg)
+    setEditingPackage(pkg);
+
     setFormData({
       title: pkg.title,
       description: pkg.description || "",
       image: pkg.imageUrl || "",
       uploadedImage: pkg.uploadedImage || "",
-      gallery: Array.isArray(pkg.gallery) ? pkg.gallery : [],
+      gallery:
+        typeof pkg.gallery === "string"
+          ? JSON.parse(pkg.gallery)
+          : pkg.gallery || [],
       stars: pkg.starRating || 1,
       nights: pkg.nights || 7,
       hotels: pkg.hotels || { makkah: [""], medina: [""] },
       price: pkg.price || 0,
       category: pkg.category || "",
-      packageIncludes: Array.isArray(pkg.packageIncludes) ? pkg.packageIncludes : [...defaultPackageIncludes],
+      packageIncludes: Array.isArray(pkg.packageIncludes)
+        ? pkg.packageIncludes
+        : [...defaultPackageIncludes],
       hotelMakkahDetails: pkg.hotelMakkahDetails || "",
       hotelMedinaDetails: pkg.hotelMedinaDetails || "",
-    })
-    setIsDialogOpen(true)
-  }
+    });
+    setIsDialogOpen(true);
+  };
 
   const handleDelete = async (packageId: string) => {
-    if (!confirm('Are you sure you want to delete this package?')) {
-      return
+    if (!confirm("Are you sure you want to delete this package?")) {
+      return;
     }
 
     try {
       const response = await fetch(`/api/packages/${packageId}`, {
-        method: 'DELETE',
-      })
+        method: "DELETE",
+      });
 
       if (!response.ok) {
-        throw new Error('Failed to delete package')
+        throw new Error("Failed to delete package");
       }
 
       toast({
         title: "Package Deleted",
         description: "Package has been successfully removed.",
-      })
+      });
 
       // Refresh the packages list
-      await fetchPackages()
+      await fetchPackages();
     } catch (error) {
-      console.error('Error deleting package:', error)
+      console.error("Error deleting package:", error);
       toast({
         title: "Error",
         description: "Failed to delete package. Please try again.",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
   const addHotel = (location: "makkah" | "medina") => {
-    const currentHotels = formData.hotels || { makkah: [""], medina: [""] }
-    const locationHotels = currentHotels[location] || [""]
-    
+    const currentHotels = formData.hotels || { makkah: [""], medina: [""] };
+    const locationHotels = currentHotels[location] || [""];
+
     setFormData({
       ...formData,
       hotels: {
         ...currentHotels,
         [location]: [...locationHotels, ""],
       },
-    })
-  }
+    });
+  };
 
   const removeHotel = (location: "makkah" | "medina", index: number) => {
-    const currentHotels = formData.hotels || { makkah: [""], medina: [""] }
-    const locationHotels = currentHotels[location] || [""]
-    
+    const currentHotels = formData.hotels || { makkah: [""], medina: [""] };
+    const locationHotels = currentHotels[location] || [""];
+
     setFormData({
       ...formData,
       hotels: {
         ...currentHotels,
         [location]: locationHotels.filter((_, i) => i !== index),
       },
-    })
-  }
+    });
+  };
 
-  const updateHotel = (location: "makkah" | "medina", index: number, value: string) => {
-    const currentHotels = formData.hotels || { makkah: [""], medina: [""] }
-    const locationHotels = [...(currentHotels[location] || [""])]
-    locationHotels[index] = value
-    
+  const updateHotel = (
+    location: "makkah" | "medina",
+    index: number,
+    value: string
+  ) => {
+    const currentHotels = formData.hotels || { makkah: [""], medina: [""] };
+    const locationHotels = [...(currentHotels[location] || [""])];
+    locationHotels[index] = value;
+
     setFormData({
       ...formData,
       hotels: {
         ...currentHotels,
         [location]: locationHotels,
       },
-    })
-  }
+    });
+  };
 
   const addPackageInclude = () => {
     setFormData({
       ...formData,
       packageIncludes: [...formData.packageIncludes, ""],
-    })
-  }
+    });
+  };
 
   const removePackageInclude = (index: number) => {
     setFormData({
       ...formData,
       packageIncludes: formData.packageIncludes.filter((_, i) => i !== index),
-    })
-  }
+    });
+  };
 
   const updatePackageInclude = (index: number, value: string) => {
-    const newIncludes = [...formData.packageIncludes]
-    newIncludes[index] = value
+    const newIncludes = [...formData.packageIncludes];
+    newIncludes[index] = value;
     setFormData({
       ...formData,
       packageIncludes: newIncludes,
-    })
-  }
+    });
+  };
 
   const renderStars = (rating: number) => {
     return Array.from({ length: 5 }, (_, i) => (
-      <Star key={i} className={`w-4 h-4 ${i < rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />
-    ))
-  }
+      <Star
+        key={i}
+        className={`w-4 h-4 ${
+          i < rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
+        }`}
+      />
+    ));
+  };
 
   const getDisplayImage = (pkg: Package) => {
-    return pkg.uploadedImage || pkg.imageUrl || "/placeholder.svg"
-  }
+    return (
+      `/uploads/${pkg.uploadedImage}` ||
+      `/uploads/${pkg.imageUrl}` ||
+      "/placeholder.svg"
+    );
+  };
 
   if (loading) {
     return (
@@ -398,15 +513,20 @@ export default function PackagesPage() {
         <Loader2 className="w-8 h-8 animate-spin" />
         <span className="ml-2">Loading packages...</span>
       </div>
-    )
+    );
   }
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Packages Management</h1>
-          <p className="text-gray-600">Create and manage Umrah packages with detailed information and gallery</p>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Packages Management
+          </h1>
+          <p className="text-gray-600">
+            Create and manage Umrah packages with detailed information and
+            gallery
+          </p>
         </div>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -418,7 +538,9 @@ export default function PackagesPage() {
           </DialogTrigger>
           <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{editingPackage ? "Edit Package" : "Create New Package"}</DialogTitle>
+              <DialogTitle>
+                {editingPackage ? "Edit Package" : "Create New Package"}
+              </DialogTitle>
             </DialogHeader>
 
             <Tabs defaultValue="basic" className="w-full">
@@ -445,7 +567,9 @@ export default function PackagesPage() {
                     <Input
                       id="title"
                       value={formData.title}
-                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, title: e.target.value })
+                      }
                       placeholder="e.g., Executive Umrah Package for 07 Nights"
                       required
                     />
@@ -456,7 +580,12 @@ export default function PackagesPage() {
                     <Textarea
                       id="description"
                       value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          description: e.target.value,
+                        })
+                      }
                       placeholder="Brief description of the package..."
                       rows={3}
                     />
@@ -469,9 +598,9 @@ export default function PackagesPage() {
                         value={formData.category}
                         onValueChange={(value) => {
                           if (value === "add-new") {
-                            setShowNewCategoryInput(true)
+                            setShowNewCategoryInput(true);
                           } else {
-                            setFormData({ ...formData, category: value })
+                            setFormData({ ...formData, category: value });
                           }
                         }}
                       >
@@ -501,7 +630,11 @@ export default function PackagesPage() {
                           <Button type="button" onClick={addNewCategory}>
                             Add
                           </Button>
-                          <Button type="button" variant="outline" onClick={() => setShowNewCategoryInput(false)}>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setShowNewCategoryInput(false)}
+                          >
                             Cancel
                           </Button>
                         </div>
@@ -530,20 +663,28 @@ export default function PackagesPage() {
                           className="hidden"
                         />
                         {formData.uploadedImage && (
-                          <Badge variant="secondary" className="bg-green-100 text-green-800">
+                          <Badge
+                            variant="secondary"
+                            className="bg-green-100 text-green-800"
+                          >
                             Image Uploaded ✓
                           </Badge>
                         )}
                       </div>
 
                       <div>
-                        <Label htmlFor="imageUrl" className="text-sm text-gray-600">
+                        <Label
+                          htmlFor="imageUrl"
+                          className="text-sm text-gray-600"
+                        >
                           Or enter image URL
                         </Label>
                         <Input
                           id="imageUrl"
                           value={formData.image}
-                          onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+                          onChange={(e) =>
+                            setFormData({ ...formData, image: e.target.value })
+                          }
                           placeholder="Enter image URL"
                           disabled={!!formData.uploadedImage}
                         />
@@ -551,10 +692,15 @@ export default function PackagesPage() {
 
                       {(formData.uploadedImage || formData.image) && (
                         <div className="mt-2">
-                          <Label className="text-sm text-gray-600">Preview:</Label>
+                          <Label className="text-sm text-gray-600">
+                            Preview:
+                          </Label>
                           <div className="mt-1 border rounded-lg overflow-hidden w-32 h-24">
                             <img
-                              src={formData.uploadedImage || formData.image}
+                              src={
+                                `/uploads/${formData.uploadedImage}` ||
+                                `/uploads/${formData.image}`
+                              }
                               alt="Package preview"
                               className="w-full h-full object-cover"
                             />
@@ -585,28 +731,34 @@ export default function PackagesPage() {
                         className="hidden"
                       />
 
-                      {Array.isArray(formData.gallery) && formData.gallery.length > 0 && (
-                        <div className="grid grid-cols-4 gap-2">
-                          {formData.gallery.map((image, index) => (
-                            <div key={index} className="relative">
-                              <img
-                                src={image || "/placeholder.svg"}
-                                alt={`Gallery ${index + 1}`}
-                                className="w-full h-20 object-cover rounded border"
-                              />
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="sm"
-                                className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
-                                onClick={() => removeGalleryImage(index)}
-                              >
-                                <X className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                      {Array.isArray(formData.gallery) &&
+                        formData.gallery.length > 0 && (
+                          <div className="grid grid-cols-4 gap-2">
+                            {formData.gallery.map((image, index) => (
+                              <div key={index} className="relative">
+                                <img
+                                  src={
+                                    editingPackage
+                                      ? `/uploads/${image}` ||
+                                        "/placeholder.svg"
+                                      : image || "/placeholder.svg"
+                                  }
+                                  alt={`Gallery ${index + 1}`}
+                                  className="w-full h-20 object-cover rounded border"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="destructive"
+                                  size="sm"
+                                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
+                                  onClick={() => removeGalleryImage(index)}
+                                >
+                                  <X className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                     </div>
                   </div>
 
@@ -615,7 +767,12 @@ export default function PackagesPage() {
                       <Label htmlFor="stars">Star Rating (1-5)</Label>
                       <Select
                         value={formData.stars.toString()}
-                        onValueChange={(value) => setFormData({ ...formData, stars: Number.parseInt(value) })}
+                        onValueChange={(value) =>
+                          setFormData({
+                            ...formData,
+                            stars: Number.parseInt(value),
+                          })
+                        }
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -636,7 +793,12 @@ export default function PackagesPage() {
                         id="nights"
                         type="number"
                         value={formData.nights}
-                        onChange={(e) => setFormData({ ...formData, nights: Number.parseInt(e.target.value) })}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            nights: Number.parseInt(e.target.value),
+                          })
+                        }
                         min="1"
                         required
                       />
@@ -649,7 +811,12 @@ export default function PackagesPage() {
                       id="price"
                       type="number"
                       value={formData.price}
-                      onChange={(e) => setFormData({ ...formData, price: Number.parseFloat(e.target.value) })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          price: Number.parseFloat(e.target.value),
+                        })
+                      }
                       min="0"
                       step="0.01"
                       required
@@ -660,7 +827,11 @@ export default function PackagesPage() {
                 <TabsContent value="includes" className="space-y-4">
                   <div className="flex items-center justify-between">
                     <Label>Package Includes</Label>
-                    <Button type="button" variant="outline" onClick={addPackageInclude}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={addPackageInclude}
+                    >
                       <Plus className="w-4 h-4 mr-2" />
                       Add Item
                     </Button>
@@ -670,10 +841,16 @@ export default function PackagesPage() {
                       <div key={index} className="flex gap-2">
                         <Input
                           value={item}
-                          onChange={(e) => updatePackageInclude(index, e.target.value)}
+                          onChange={(e) =>
+                            updatePackageInclude(index, e.target.value)
+                          }
                           placeholder="Package include item"
                         />
-                        <Button type="button" variant="outline" onClick={() => removePackageInclude(index)}>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => removePackageInclude(index)}
+                        >
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
@@ -689,18 +866,28 @@ export default function PackagesPage() {
                         <div key={index} className="flex gap-2">
                           <Input
                             value={hotel}
-                            onChange={(e) => updateHotel("makkah", index, e.target.value)}
+                            onChange={(e) =>
+                              updateHotel("makkah", index, e.target.value)
+                            }
                             placeholder={`Makkah Hotel ${index + 1} name`}
                             required
                           />
                           {(formData.hotels?.makkah || []).length > 1 && (
-                            <Button type="button" variant="outline" onClick={() => removeHotel("makkah", index)}>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => removeHotel("makkah", index)}
+                            >
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           )}
                         </div>
                       ))}
-                      <Button type="button" variant="outline" onClick={() => addHotel("makkah")}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => addHotel("makkah")}
+                      >
                         <Plus className="w-4 h-4 mr-2" />
                         Add Makkah Hotel
                       </Button>
@@ -708,11 +895,18 @@ export default function PackagesPage() {
                   </div>
 
                   <div>
-                    <Label htmlFor="hotelMakkahDetails">Hotel Details in Makkah</Label>
+                    <Label htmlFor="hotelMakkahDetails">
+                      Hotel Details in Makkah
+                    </Label>
                     <Textarea
                       id="hotelMakkahDetails"
                       value={formData.hotelMakkahDetails}
-                      onChange={(e) => setFormData({ ...formData, hotelMakkahDetails: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          hotelMakkahDetails: e.target.value,
+                        })
+                      }
                       placeholder="Describe the hotel facilities, location, and amenities in Makkah..."
                       rows={6}
                     />
@@ -727,18 +921,28 @@ export default function PackagesPage() {
                         <div key={index} className="flex gap-2">
                           <Input
                             value={hotel}
-                            onChange={(e) => updateHotel("medina", index, e.target.value)}
+                            onChange={(e) =>
+                              updateHotel("medina", index, e.target.value)
+                            }
                             placeholder={`Medina Hotel ${index + 1} name`}
                             required
                           />
                           {(formData.hotels?.medina || []).length > 1 && (
-                            <Button type="button" variant="outline" onClick={() => removeHotel("medina", index)}>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => removeHotel("medina", index)}
+                            >
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           )}
                         </div>
                       ))}
-                      <Button type="button" variant="outline" onClick={() => addHotel("medina")}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => addHotel("medina")}
+                      >
                         <Plus className="w-4 h-4 mr-2" />
                         Add Medina Hotel
                       </Button>
@@ -746,11 +950,18 @@ export default function PackagesPage() {
                   </div>
 
                   <div>
-                    <Label htmlFor="hotelMedinaDetails">Hotel Details in Medina</Label>
+                    <Label htmlFor="hotelMedinaDetails">
+                      Hotel Details in Medina
+                    </Label>
                     <Textarea
                       id="hotelMedinaDetails"
                       value={formData.hotelMedinaDetails}
-                      onChange={(e) => setFormData({ ...formData, hotelMedinaDetails: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          hotelMedinaDetails: e.target.value,
+                        })
+                      }
                       placeholder="Describe the hotel facilities, location, and amenities in Medina..."
                       rows={6}
                     />
@@ -758,8 +969,14 @@ export default function PackagesPage() {
                 </TabsContent>
 
                 <div className="flex gap-2 pt-4">
-                  <Button type="submit" className="flex-1" disabled={submitting}>
-                    {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  <Button
+                    type="submit"
+                    className="flex-1"
+                    disabled={submitting}
+                  >
+                    {submitting && (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    )}
                     {editingPackage ? "Update Package" : "Create Package"}
                   </Button>
                   <Button type="button" variant="outline" onClick={resetForm}>
@@ -774,22 +991,36 @@ export default function PackagesPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {packages.map((pkg) => (
-          <Card key={pkg.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+          <Card
+            key={pkg.id}
+            className="overflow-hidden hover:shadow-lg transition-shadow"
+          >
             <div className="relative h-48">
-              <Image src={getDisplayImage(pkg) || "/placeholder.svg"} alt={pkg.title} fill className="object-cover" />
+              <Image
+                src={getDisplayImage(pkg) || "/placeholder.svg"}
+                alt={pkg.title}
+                fill
+                className="object-cover"
+              />
               <div className="absolute top-2 right-2 bg-white rounded-full px-2 py-1 flex items-center gap-1">
                 {renderStars(pkg.starRating)}
               </div>
               {pkg.uploadedImage && (
                 <div className="absolute top-2 left-2">
-                  <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs">
+                  <Badge
+                    variant="secondary"
+                    className="bg-green-100 text-green-800 text-xs"
+                  >
                     Uploaded ✓
                   </Badge>
                 </div>
               )}
               {pkg.gallery && pkg.gallery.length > 0 && (
                 <div className="absolute bottom-2 left-2">
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-800 text-xs">
+                  <Badge
+                    variant="secondary"
+                    className="bg-blue-100 text-blue-800 text-xs"
+                  >
                     +{pkg.gallery.length} Gallery
                   </Badge>
                 </div>
@@ -811,19 +1042,28 @@ export default function PackagesPage() {
               <div>
                 <Label className="text-sm font-medium">Makkah Hotels:</Label>
                 <div className="text-sm text-gray-600">
-                  {pkg.hotels?.makkah?.length ? pkg.hotels.makkah.join(", ") : "No hotels specified"}
+                  {pkg.hotels?.makkah?.length
+                    ? pkg.hotels.makkah.join(", ")
+                    : "No hotels specified"}
                 </div>
               </div>
 
               <div>
                 <Label className="text-sm font-medium">Medina Hotels:</Label>
                 <div className="text-sm text-gray-600">
-                  {pkg.hotels?.medina?.length ? pkg.hotels.medina.join(", ") : "No hotels specified"}
+                  {pkg.hotels?.medina?.length
+                    ? pkg.hotels.medina.join(", ")
+                    : "No hotels specified"}
                 </div>
               </div>
 
               <div className="flex gap-2 pt-2">
-                <Button variant="outline" size="sm" onClick={() => handleEdit(pkg)} className="flex-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleEdit(pkg)}
+                  className="flex-1"
+                >
                   <Edit className="w-4 h-4 mr-2" />
                   Edit
                 </Button>
@@ -837,7 +1077,9 @@ export default function PackagesPage() {
                 </Button>
               </div>
 
-              <Button className="w-full bg-green-600 hover:bg-green-700">Get a Quote</Button>
+              <Button className="w-full bg-green-600 hover:bg-green-700">
+                Get a Quote
+              </Button>
             </CardContent>
           </Card>
         ))}
@@ -845,9 +1087,11 @@ export default function PackagesPage() {
 
       {packages.length === 0 && !loading && (
         <div className="text-center py-12">
-          <p className="text-gray-500 text-lg">No packages found. Create your first package!</p>
+          <p className="text-gray-500 text-lg">
+            No packages found. Create your first package!
+          </p>
         </div>
       )}
     </div>
-  )
+  );
 }
