@@ -54,49 +54,93 @@ export default function FlyingPartnersPage() {
 
   // Load configuration from database
   useEffect(() => {
-    loadConfig()
-  }, [])
+  loadConfig()
+}, [])
 
-  const loadConfig = async () => {
-    try {
-      setLoading(true)
-      const response = await fetch("/api/flying-partners")
-      if (response.ok) {
-        const data = await response.json()
-        // Ensure the data has the correct structure with defaults
-        const loadedConfig: FlyingPartnersConfig = {
-          id: data.id,
-          title: data.title || defaultConfig.title,
-          images: Array.isArray(data.images) ? data.images : defaultConfig.images,
-          displaySettings: {
-            desktop: data.displaySettings?.desktop ?? defaultConfig.displaySettings.desktop,
-            tablet: data.displaySettings?.tablet ?? defaultConfig.displaySettings.tablet,
-            mobile: data.displaySettings?.mobile ?? defaultConfig.displaySettings.mobile,
-            autoplay: data.displaySettings?.autoplay ?? defaultConfig.displaySettings.autoplay,
-            speed: data.displaySettings?.speed ?? defaultConfig.displaySettings.speed,
-          },
-        }
-        setConfig(loadedConfig)
-      } else {
-        throw new Error("Failed to load configuration")
+const loadConfig = async () => {
+  try {
+    setLoading(true)
+    console.log("Loading flying partners config...")
+
+    const response = await fetch("/api/flying-partners", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+
+    console.log("Response status:", response.status)
+
+    if (response.ok) {
+      const data = await response.json()
+      console.log("Loaded data:", data)
+
+      // Parse the JSON strings into objects
+      const parsedImages = JSON.parse(data.images)
+      const parsedDisplaySettings = JSON.parse(data.displaySettings)
+
+      const loadedConfig: FlyingPartnersConfig = {
+        id: data.id,
+        title: data.title || defaultConfig.title,
+        images: Array.isArray(parsedImages) ? parsedImages : defaultConfig.images,
+        displaySettings: {
+          desktop: parsedDisplaySettings?.desktop ?? defaultConfig.displaySettings.desktop,
+          tablet: parsedDisplaySettings?.tablet ?? defaultConfig.displaySettings.tablet,
+          mobile: parsedDisplaySettings?.mobile ?? defaultConfig.displaySettings.mobile,
+          autoplay: parsedDisplaySettings?.autoplay ?? defaultConfig.displaySettings.autoplay,
+          speed: parsedDisplaySettings?.speed ?? defaultConfig.displaySettings.speed,
+        },
       }
-    } catch (error) {
-      console.error("Error loading config:", error)
-      toast({
-        title: "Error",
-        description: "Failed to load flying partners configuration. Using default settings.",
-        variant: "destructive",
-      })
-      // Use default config on error
-      setConfig(defaultConfig)
-    } finally {
-      setLoading(false)
+
+      setConfig(loadedConfig)
+      console.log("Config set:", loadedConfig)
+    } else {
+      const errorData = await response.json()
+      console.error("API Error:", errorData)
+      throw new Error(errorData.error || "Failed to load configuration")
     }
+  } catch (error) {
+    console.error("Error loading config:", error)
+    toast({
+      title: "Error",
+      description: "Failed to load flying partners configuration. Using default settings.",
+      variant: "destructive",
+    })
+    setConfig(defaultConfig)
+  } finally {
+    setLoading(false)
   }
+}
+
+const saveUpdatedTitle = async (title: string) => {
+  if (!title) return;
+  setSaving(true);
+
+  try {
+    const updatedConfig = { ...config, title };
+    await saveConfig(updatedConfig);
+    toast({
+      title: "Success",
+      description: "Section title updated successfully",
+    });
+  } catch (error) {
+    console.error("Error updating section title:", error);
+    toast({
+      title: "Error",
+      description: "Failed to update section title",
+      variant: "destructive",
+    });
+  } finally {
+    setSaving(false);
+  }
+};
+
 
   const saveConfig = async (updatedConfig: FlyingPartnersConfig) => {
     try {
       setSaving(true)
+      console.log("Saving config:", updatedConfig)
+
       const response = await fetch("/api/flying-partners", {
         method: "POST",
         headers: {
@@ -107,6 +151,8 @@ export default function FlyingPartnersPage() {
 
       if (response.ok) {
         const savedConfig = await response.json()
+        console.log("Saved config:", savedConfig)
+
         // Ensure saved config has proper structure
         const normalizedConfig: FlyingPartnersConfig = {
           id: savedConfig.id,
@@ -126,7 +172,9 @@ export default function FlyingPartnersPage() {
           description: "Configuration saved successfully",
         })
       } else {
-        throw new Error("Failed to save configuration")
+        const errorData = await response.json()
+        console.error("Save error:", errorData)
+        throw new Error(errorData.error || "Failed to save configuration")
       }
     } catch (error) {
       console.error("Error saving config:", error)
@@ -252,7 +300,7 @@ export default function FlyingPartnersPage() {
   const updateTitle = async (title: string) => {
     const updatedConfig = { ...config, title }
     setConfig(updatedConfig)
-    await saveConfig(updatedConfig)
+    // await saveConfig(updatedConfig)
   }
 
   const getVisibleImages = () => {
@@ -442,8 +490,18 @@ export default function FlyingPartnersPage() {
                   disabled={saving}
                 />
               </div>
+              <div className="flex justify-end">
+                <Button
+                  variant="default"
+                  onClick={() => saveUpdatedTitle(config.title)}
+                  disabled={saving}
+                >
+                  Update
+                </Button>
+              </div>
             </CardContent>
           </Card>
+
 
           {/* Display Settings */}
           <Card>
