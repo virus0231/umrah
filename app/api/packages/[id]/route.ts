@@ -18,6 +18,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   try {
     const packageData = await request.json()
 
+    console.log("Updating package with data:", packageData) 
+
     const updatedPackage = await Package.update(
       {
         title: packageData.title,

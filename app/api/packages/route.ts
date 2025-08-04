@@ -18,6 +18,8 @@ export async function POST(request: NextRequest) {
   try {
     const packageData = await request.json()
 
+    console.log("Creating package with data:", packageData)
+
     const newPackage = await Package.create({
       title: packageData.title,
       description: packageData.description || "",
