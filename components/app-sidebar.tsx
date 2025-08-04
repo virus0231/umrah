@@ -63,16 +63,16 @@ const data = {
           url: "/dashboard/snippets",
           icon: Code,
         },
-        {
-          title: "Header",
-          url: "/dashboard/header",
-          icon: Header,
-        },
-        {
-          title: "Footer",
-          url: "/dashboard/footer",
-          icon: Footer,
-        },
+        // {
+        //   title: "Header",
+        //   url: "/dashboard/header",
+        //   icon: Header,
+        // },
+        // {
+        //   title: "Footer",
+        //   url: "/dashboard/footer",
+        //   icon: Footer,
+        // },
         {
           title: "Flying Partners",
           url: "/dashboard/flying-partners",

@@ -507,6 +507,23 @@ export default function PackagesPage() {
     );
   };
 
+  const getPreviewImage = () => {
+   
+    if (formData.uploadedImage?.startsWith("blob:")) {
+      return formData.uploadedImage;
+    }
+
+    if (formData.uploadedImage) {
+      return `/uploads/${formData.uploadedImage}`;
+    }
+
+    if (formData.image) {
+      return formData.image;
+    }
+
+    return "/placeholder.svg";
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -697,10 +714,7 @@ export default function PackagesPage() {
                           </Label>
                           <div className="mt-1 border rounded-lg overflow-hidden w-32 h-24">
                             <img
-                              src={
-                                `/uploads/${formData.uploadedImage}` ||
-                                `/uploads/${formData.image}`
-                              }
+                              src={getPreviewImage()}
                               alt="Package preview"
                               className="w-full h-full object-cover"
                             />

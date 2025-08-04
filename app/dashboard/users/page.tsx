@@ -42,11 +42,14 @@ export default function UsersPage() {
   }, [])
 
   const fetchUsers = async () => {
+    setLoading(true)
     try {
       const response = await fetch("/api/users")
       if (response.ok) {
         const data = await response.json()
         setUsers(data)
+      } else {
+        throw new Error('Failed to fetch users')
       }
     } catch (error) {
       console.error("Error fetching users:", error)
@@ -62,11 +65,11 @@ export default function UsersPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
     try {
+      let response;
       if (editingUser) {
         // Update existing user
-        const response = await fetch(`/api/users/${editingUser.id}`, {
+        response = await fetch(`/api/users/${editingUser.id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -84,7 +87,7 @@ export default function UsersPage() {
         }
       } else {
         // Add new user
-        const response = await fetch("/api/users", {
+        response = await fetch("/api/users", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -160,7 +163,7 @@ export default function UsersPage() {
   }
 
   const filteredUsers = users.filter((user) =>
-    `${user.firstName} ${user.lastName} ${user.email}`.toLowerCase().includes(searchTerm.toLowerCase()),
+    `${user.firstName} ${user.lastName} ${user.email}`.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   if (loading) {
@@ -222,7 +225,6 @@ export default function UsersPage() {
         </TableBody>
       </Table>
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogTrigger>Trigger</DialogTrigger>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>{editingUser ? "Edit User" : "Add User"}</DialogTitle>

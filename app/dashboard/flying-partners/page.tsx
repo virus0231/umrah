@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,6 +18,7 @@ interface PartnerImage {
 }
 
 interface FlyingPartnersConfig {
+  id?: number
   title: string
   images: PartnerImage[]
   displaySettings: {
@@ -29,46 +30,9 @@ interface FlyingPartnersConfig {
   }
 }
 
-const initialConfig: FlyingPartnersConfig = {
+const defaultConfig: FlyingPartnersConfig = {
   title: "Our Flying partners",
-  images: [
-    {
-      id: "1",
-      name: "Pegasus Airlines",
-      url: "/placeholder.svg?height=80&width=120&text=Pegasus",
-      alt: "Pegasus Airlines",
-    },
-    {
-      id: "2",
-      name: "Saudia",
-      url: "/placeholder.svg?height=80&width=120&text=Saudia",
-      alt: "Saudia Airlines",
-    },
-    {
-      id: "3",
-      name: "Gulf Air",
-      url: "/placeholder.svg?height=80&width=120&text=Gulf+Air",
-      alt: "Gulf Air",
-    },
-    {
-      id: "4",
-      name: "EgyptAir",
-      url: "/placeholder.svg?height=80&width=120&text=EgyptAir",
-      alt: "EgyptAir",
-    },
-    {
-      id: "5",
-      name: "Turkish Airlines",
-      url: "/placeholder.svg?height=80&width=120&text=Turkish",
-      alt: "Turkish Airlines",
-    },
-    {
-      id: "6",
-      name: "Emirates",
-      url: "/placeholder.svg?height=80&width=120&text=Emirates",
-      alt: "Emirates Airlines",
-    },
-  ],
+  images: [],
   displaySettings: {
     desktop: 4,
     tablet: 3,
@@ -79,12 +43,156 @@ const initialConfig: FlyingPartnersConfig = {
 }
 
 export default function FlyingPartnersPage() {
-  const [config, setConfig] = useState<FlyingPartnersConfig>(initialConfig)
+  const [config, setConfig] = useState<FlyingPartnersConfig>(defaultConfig)
   const [viewMode, setViewMode] = useState<"desktop" | "tablet" | "mobile">("desktop")
   const [currentSlide, setCurrentSlide] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [uploadingImages, setUploadingImages] = useState<Set<string>>(new Set())
+  const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({})
   const { toast } = useToast()
 
-  const addImage = () => {
+  // Load configuration from database
+  useEffect(() => {
+    loadConfig()
+  }, [])
+
+  const loadConfig = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch("/api/flying-partners")
+      if (response.ok) {
+        const data = await response.json()
+        // Ensure the data has the correct structure with defaults
+        const loadedConfig: FlyingPartnersConfig = {
+          id: data.id,
+          title: data.title || defaultConfig.title,
+          images: Array.isArray(data.images) ? data.images : defaultConfig.images,
+          displaySettings: {
+            desktop: data.displaySettings?.desktop ?? defaultConfig.displaySettings.desktop,
+            tablet: data.displaySettings?.tablet ?? defaultConfig.displaySettings.tablet,
+            mobile: data.displaySettings?.mobile ?? defaultConfig.displaySettings.mobile,
+            autoplay: data.displaySettings?.autoplay ?? defaultConfig.displaySettings.autoplay,
+            speed: data.displaySettings?.speed ?? defaultConfig.displaySettings.speed,
+          },
+        }
+        setConfig(loadedConfig)
+      } else {
+        throw new Error("Failed to load configuration")
+      }
+    } catch (error) {
+      console.error("Error loading config:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load flying partners configuration. Using default settings.",
+        variant: "destructive",
+      })
+      // Use default config on error
+      setConfig(defaultConfig)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const saveConfig = async (updatedConfig: FlyingPartnersConfig) => {
+    try {
+      setSaving(true)
+      const response = await fetch("/api/flying-partners", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatedConfig),
+      })
+
+      if (response.ok) {
+        const savedConfig = await response.json()
+        // Ensure saved config has proper structure
+        const normalizedConfig: FlyingPartnersConfig = {
+          id: savedConfig.id,
+          title: savedConfig.title || defaultConfig.title,
+          images: Array.isArray(savedConfig.images) ? savedConfig.images : defaultConfig.images,
+          displaySettings: {
+            desktop: savedConfig.displaySettings?.desktop ?? defaultConfig.displaySettings.desktop,
+            tablet: savedConfig.displaySettings?.tablet ?? defaultConfig.displaySettings.tablet,
+            mobile: savedConfig.displaySettings?.mobile ?? defaultConfig.displaySettings.mobile,
+            autoplay: savedConfig.displaySettings?.autoplay ?? defaultConfig.displaySettings.autoplay,
+            speed: savedConfig.displaySettings?.speed ?? defaultConfig.displaySettings.speed,
+          },
+        }
+        setConfig(normalizedConfig)
+        toast({
+          title: "Success",
+          description: "Configuration saved successfully",
+        })
+      } else {
+        throw new Error("Failed to save configuration")
+      }
+    } catch (error) {
+      console.error("Error saving config:", error)
+      toast({
+        title: "Error",
+        description: "Failed to save configuration",
+        variant: "destructive",
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const uploadImage = async (file: File): Promise<string> => {
+    const formData = new FormData()
+    formData.append("file", file)
+
+    const response = await fetch("/api/upload", {
+      method: "POST",
+      body: formData,
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || "Upload failed")
+    }
+
+    const result = await response.json()
+    return result.url
+  }
+
+  const handleImageUpload = async (imageId: string, file: File) => {
+    try {
+      setUploadingImages((prev) => new Set(prev).add(imageId))
+
+      const imageUrl = await uploadImage(file)
+
+      const updatedConfig = {
+        ...config,
+        images: config.images.map((img) => (img.id === imageId ? { ...img, url: imageUrl } : img)),
+      }
+
+      setConfig(updatedConfig)
+      await saveConfig(updatedConfig)
+
+      toast({
+        title: "Success",
+        description: "Image uploaded successfully",
+      })
+    } catch (error) {
+      console.error("Error uploading image:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to upload image",
+        variant: "destructive",
+      })
+    } finally {
+      setUploadingImages((prev) => {
+        const newSet = new Set(prev)
+        newSet.delete(imageId)
+        return newSet
+      })
+    }
+  }
+
+  const addImage = async () => {
     const newImage: PartnerImage = {
       id: Date.now().toString(),
       name: "New Partner",
@@ -92,10 +200,13 @@ export default function FlyingPartnersPage() {
       alt: "New Partner",
     }
 
-    setConfig({
+    const updatedConfig = {
       ...config,
       images: [...config.images, newImage],
-    })
+    }
+
+    setConfig(updatedConfig)
+    await saveConfig(updatedConfig)
 
     toast({
       title: "Partner Added",
@@ -103,11 +214,14 @@ export default function FlyingPartnersPage() {
     })
   }
 
-  const removeImage = (imageId: string) => {
-    setConfig({
+  const removeImage = async (imageId: string) => {
+    const updatedConfig = {
       ...config,
       images: config.images.filter((img) => img.id !== imageId),
-    })
+    }
+
+    setConfig(updatedConfig)
+    await saveConfig(updatedConfig)
 
     toast({
       title: "Partner Removed",
@@ -115,35 +229,53 @@ export default function FlyingPartnersPage() {
     })
   }
 
-  const updateImage = (imageId: string, updates: Partial<PartnerImage>) => {
-    setConfig({
+  const updateImage = async (imageId: string, updates: Partial<PartnerImage>) => {
+    const updatedConfig = {
       ...config,
       images: config.images.map((img) => (img.id === imageId ? { ...img, ...updates } : img)),
-    })
+    }
+
+    setConfig(updatedConfig)
+    await saveConfig(updatedConfig)
   }
 
-  const updateDisplaySettings = (updates: Partial<typeof config.displaySettings>) => {
-    setConfig({
+  const updateDisplaySettings = async (updates: Partial<typeof config.displaySettings>) => {
+    const updatedConfig = {
       ...config,
       displaySettings: { ...config.displaySettings, ...updates },
-    })
+    }
+
+    setConfig(updatedConfig)
+    await saveConfig(updatedConfig)
+  }
+
+  const updateTitle = async (title: string) => {
+    const updatedConfig = { ...config, title }
+    setConfig(updatedConfig)
+    await saveConfig(updatedConfig)
   }
 
   const getVisibleImages = () => {
-    const itemsPerView = config.displaySettings[viewMode]
+    if (!config.images || config.images.length === 0) return []
+
+    const itemsPerView = config.displaySettings[viewMode] || 1
     const totalSlides = Math.ceil(config.images.length / itemsPerView)
     const startIndex = (currentSlide % totalSlides) * itemsPerView
     return config.images.slice(startIndex, startIndex + itemsPerView)
   }
 
   const nextSlide = () => {
-    const itemsPerView = config.displaySettings[viewMode]
+    if (!config.images || config.images.length === 0) return
+
+    const itemsPerView = config.displaySettings[viewMode] || 1
     const totalSlides = Math.ceil(config.images.length / itemsPerView)
     setCurrentSlide((prev) => (prev + 1) % totalSlides)
   }
 
   const prevSlide = () => {
-    const itemsPerView = config.displaySettings[viewMode]
+    if (!config.images || config.images.length === 0) return
+
+    const itemsPerView = config.displaySettings[viewMode] || 1
     const totalSlides = Math.ceil(config.images.length / itemsPerView)
     setCurrentSlide((prev) => (prev - 1 + totalSlides) % totalSlides)
   }
@@ -172,61 +304,85 @@ export default function FlyingPartnersPage() {
           {/* Slider Container */}
           <div className="overflow-hidden">
             <div className="flex items-center justify-center gap-8">
-              {visibleImages.map((image) => (
-                <div
-                  key={image.id}
-                  className="flex-shrink-0 flex items-center justify-center p-4 bg-white rounded-lg shadow-sm border"
-                  style={{
-                    width: `${100 / config.displaySettings[viewMode]}%`,
-                    minWidth: "120px",
-                  }}
-                >
-                  <Image
-                    src={image.url || "/placeholder.svg"}
-                    alt={image.alt}
-                    width={120}
-                    height={80}
-                    className="max-w-full h-auto object-contain"
-                  />
+              {visibleImages.length > 0 ? (
+                visibleImages.map((image) => (
+                  <div
+                    key={image.id}
+                    className="flex-shrink-0 flex items-center justify-center p-4 bg-white rounded-lg shadow-sm border"
+                    style={{
+                      width: `${100 / (config.displaySettings[viewMode] || 1)}%`,
+                      minWidth: "120px",
+                    }}
+                  >
+                    <Image
+                      src={image.url || "/placeholder.svg"}
+                      alt={image.alt}
+                      width={120}
+                      height={80}
+                      className="max-w-full h-auto object-contain"
+                    />
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <p>No partners to display. Add some partners to see the preview.</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
           {/* Navigation Arrows */}
-          <button
-            onClick={prevSlide}
-            className="absolute left-0 top-1/2 transform -translate-y-1/2 bg-white shadow-lg rounded-full p-2 hover:bg-gray-50"
-          >
-            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
+          {config.images && config.images.length > (config.displaySettings[viewMode] || 1) && (
+            <>
+              <button
+                onClick={prevSlide}
+                className="absolute left-0 top-1/2 transform -translate-y-1/2 bg-white shadow-lg rounded-full p-2 hover:bg-gray-50"
+              >
+                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
 
-          <button
-            onClick={nextSlide}
-            className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-white shadow-lg rounded-full p-2 hover:bg-gray-50"
-          >
-            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
+              <button
+                onClick={nextSlide}
+                className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-white shadow-lg rounded-full p-2 hover:bg-gray-50"
+              >
+                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
 
-          {/* Dots Indicator */}
-          <div className="flex justify-center mt-6 space-x-2">
-            {Array.from({ length: Math.ceil(config.images.length / config.displaySettings[viewMode]) }).map(
-              (_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentSlide(index)}
-                  className={`w-3 h-3 rounded-full transition-colors ${
-                    index === currentSlide % Math.ceil(config.images.length / config.displaySettings[viewMode])
-                      ? "bg-green-600"
-                      : "bg-gray-300"
-                  }`}
-                />
-              ),
-            )}
+              {/* Dots Indicator */}
+              <div className="flex justify-center mt-6 space-x-2">
+                {Array.from({ length: Math.ceil(config.images.length / (config.displaySettings[viewMode] || 1)) }).map(
+                  (_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentSlide(index)}
+                      className={`w-3 h-3 rounded-full transition-colors ${
+                        index ===
+                        currentSlide % Math.ceil(config.images.length / (config.displaySettings[viewMode] || 1))
+                          ? "bg-green-600"
+                          : "bg-gray-300"
+                      }`}
+                    />
+                  ),
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading flying partners configuration...</p>
           </div>
         </div>
       </div>
@@ -280,9 +436,10 @@ export default function FlyingPartnersPage() {
                 <Label htmlFor="sectionTitle">Section Title</Label>
                 <Input
                   id="sectionTitle"
-                  value={config.title}
-                  onChange={(e) => setConfig({ ...config, title: e.target.value })}
+                  value={config.title || ""}
+                  onChange={(e) => updateTitle(e.target.value)}
                   placeholder="Enter section title"
+                  disabled={saving}
                 />
               </div>
             </CardContent>
@@ -298,8 +455,9 @@ export default function FlyingPartnersPage() {
                 <div>
                   <Label htmlFor="desktopCount">Desktop View</Label>
                   <Select
-                    value={config.displaySettings.desktop.toString()}
+                    value={(config.displaySettings?.desktop || defaultConfig.displaySettings.desktop).toString()}
                     onValueChange={(value) => updateDisplaySettings({ desktop: Number.parseInt(value) })}
+                    disabled={saving}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -317,8 +475,9 @@ export default function FlyingPartnersPage() {
                 <div>
                   <Label htmlFor="tabletCount">Tablet View</Label>
                   <Select
-                    value={config.displaySettings.tablet.toString()}
+                    value={(config.displaySettings?.tablet || defaultConfig.displaySettings.tablet).toString()}
                     onValueChange={(value) => updateDisplaySettings({ tablet: Number.parseInt(value) })}
+                    disabled={saving}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -334,8 +493,9 @@ export default function FlyingPartnersPage() {
                 <div>
                   <Label htmlFor="mobileCount">Mobile View</Label>
                   <Select
-                    value={config.displaySettings.mobile.toString()}
+                    value={(config.displaySettings?.mobile || defaultConfig.displaySettings.mobile).toString()}
                     onValueChange={(value) => updateDisplaySettings({ mobile: Number.parseInt(value) })}
+                    disabled={saving}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -353,23 +513,25 @@ export default function FlyingPartnersPage() {
                 <input
                   type="checkbox"
                   id="autoplay"
-                  checked={config.displaySettings.autoplay}
+                  checked={config.displaySettings?.autoplay ?? defaultConfig.displaySettings.autoplay}
                   onChange={(e) => updateDisplaySettings({ autoplay: e.target.checked })}
+                  disabled={saving}
                 />
                 <Label htmlFor="autoplay">Enable autoplay</Label>
               </div>
 
-              {config.displaySettings.autoplay && (
+              {(config.displaySettings?.autoplay ?? defaultConfig.displaySettings.autoplay) && (
                 <div>
                   <Label htmlFor="speed">Autoplay Speed (ms)</Label>
                   <Input
                     id="speed"
                     type="number"
-                    value={config.displaySettings.speed}
+                    value={config.displaySettings?.speed || defaultConfig.displaySettings.speed}
                     onChange={(e) => updateDisplaySettings({ speed: Number.parseInt(e.target.value) })}
                     min="1000"
                     max="10000"
                     step="500"
+                    disabled={saving}
                   />
                 </div>
               )}
@@ -381,71 +543,107 @@ export default function FlyingPartnersPage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Partner Images</CardTitle>
-                <Button onClick={addImage} size="sm">
+                <Button onClick={addImage} size="sm" disabled={saving}>
                   <Plus className="w-4 h-4 mr-2" />
                   Add Partner
                 </Button>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {config.images.map((image) => (
-                <div key={image.id} className="p-4 border rounded-lg space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Image
-                        src={image.url || "/placeholder.svg"}
-                        alt={image.alt}
-                        width={60}
-                        height={40}
-                        className="object-contain border rounded"
-                      />
-                      <div>
-                        <p className="font-medium">{image.name}</p>
-                        <p className="text-xs text-gray-500">{image.alt}</p>
+              {config.images && config.images.length > 0 ? (
+                config.images.map((image) => (
+                  <div key={image.id} className="p-4 border rounded-lg space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Image
+                          src={image.url || "/placeholder.svg"}
+                          alt={image.alt}
+                          width={60}
+                          height={40}
+                          className="object-contain border rounded"
+                        />
+                        <div>
+                          <p className="font-medium">{image.name}</p>
+                          <p className="text-xs text-gray-500">{image.alt}</p>
+                        </div>
                       </div>
-                    </div>
-                    <Button variant="outline" size="sm" onClick={() => removeImage(image.id)} className="text-red-600">
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label className="text-xs">Partner Name</Label>
-                      <Input
-                        value={image.name}
-                        onChange={(e) => updateImage(image.id, { name: e.target.value })}
-                        className="h-8"
-                        placeholder="Partner name"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Alt Text</Label>
-                      <Input
-                        value={image.alt}
-                        onChange={(e) => updateImage(image.id, { alt: e.target.value })}
-                        className="h-8"
-                        placeholder="Alt text"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label className="text-xs">Image URL</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        value={image.url}
-                        onChange={(e) => updateImage(image.id, { url: e.target.value })}
-                        className="h-8"
-                        placeholder="Enter image URL"
-                      />
-                      <Button variant="outline" size="sm">
-                        <Upload className="w-4 h-4" />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => removeImage(image.id)}
+                        className="text-red-600"
+                        disabled={saving}
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label className="text-xs">Partner Name</Label>
+                        <Input
+                          value={image.name}
+                          onChange={(e) => updateImage(image.id, { name: e.target.value })}
+                          className="h-8"
+                          placeholder="Partner name"
+                          disabled={saving}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Alt Text</Label>
+                        <Input
+                          value={image.alt}
+                          onChange={(e) => updateImage(image.id, { alt: e.target.value })}
+                          className="h-8"
+                          placeholder="Alt text"
+                          disabled={saving}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Image URL</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          value={image.url}
+                          onChange={(e) => updateImage(image.id, { url: e.target.value })}
+                          className="h-8"
+                          placeholder="Enter image URL"
+                          disabled={saving}
+                        />
+                        <input
+                          type="file"
+                          ref={(el) => (fileInputRefs.current[image.id] = el)}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) {
+                              handleImageUpload(image.id, file)
+                            }
+                          }}
+                          accept="image/*"
+                          className="hidden"
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => fileInputRefs.current[image.id]?.click()}
+                          disabled={uploadingImages.has(image.id) || saving}
+                        >
+                          {uploadingImages.has(image.id) ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+                          ) : (
+                            <Upload className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <p>No partners added yet. Click "Add Partner" to get started.</p>
                 </div>
-              ))}
+              )}
             </CardContent>
           </Card>
         </div>
@@ -460,6 +658,15 @@ export default function FlyingPartnersPage() {
           </CardContent>
         </Card>
       </div>
+
+      {saving && (
+        <div className="fixed bottom-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg">
+          <div className="flex items-center gap-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+            <span>Saving changes...</span>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
