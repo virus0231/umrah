@@ -80,14 +80,20 @@ export async function PUT(
         gallery = [path.basename(files.gallery.filepath)];
       }
     }
-
-    if (fields.gallery) {
-      if (Array.isArray(fields.gallery)) {
-        fields.gallery.forEach((g: string) => {
+    // Accept galleryUrls as JSON string for URLs/filenames
+    if (fields.galleryUrls) {
+      let urls: string[] = [];
+      try {
+        urls = JSON.parse(
+          Array.isArray(fields.galleryUrls)
+            ? fields.galleryUrls[0]
+            : fields.galleryUrls
+        );
+      } catch {}
+      if (Array.isArray(urls)) {
+        urls.forEach((g) => {
           if (!gallery.includes(g)) gallery.push(g);
         });
-      } else if (typeof fields.gallery === "string") {
-        if (!gallery.includes(fields.gallery)) gallery.push(fields.gallery);
       }
     }
 
@@ -105,7 +111,7 @@ export async function PUT(
         description: fields.description?.[0] || "",
         imageUrl: fields.image || "",
         uploadedImage: finalImageUrl,
-        gallery: finalGallery,
+        gallery: JSON.stringify(finalGallery),
         starRating: fields.stars?.[0],
         nights: fields.nights?.[0],
         hotels: fields.hotels?.[0],

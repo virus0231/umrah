@@ -75,15 +75,20 @@ export async function POST(request: NextRequest) {
         gallery = [path.basename(files.gallery.filepath)];
       }
     }
-    // Always merge with any string-based gallery images (URLs or filenames)
-    if (fields.gallery) {
-      if (Array.isArray(fields.gallery)) {
-        // Only add those that are not already in gallery (avoid duplicates)
-        fields.gallery.forEach((g: string) => {
+    // Accept galleryUrls as JSON string for URLs/filenames
+    if (fields.galleryUrls) {
+      let urls: string[] = [];
+      try {
+        urls = JSON.parse(
+          Array.isArray(fields.galleryUrls)
+            ? fields.galleryUrls[0]
+            : fields.galleryUrls
+        );
+      } catch {}
+      if (Array.isArray(urls)) {
+        urls.forEach((g) => {
           if (!gallery.includes(g)) gallery.push(g);
         });
-      } else if (typeof fields.gallery === "string") {
-        if (!gallery.includes(fields.gallery)) gallery.push(fields.gallery);
       }
     }
 
@@ -94,7 +99,7 @@ export async function POST(request: NextRequest) {
       description: fields.description?.[0] || "",
       imageUrl: fields.image || "",
       uploadedImage: imageUrl,
-      gallery,
+      gallery: JSON.stringify(gallery),
       starRating: parseInt(fields.stars?.[0], 10) || 1,
       nights: parseInt(fields.nights?.[0], 10) || 1,
       hotels: JSON.parse(fields.hotels?.[0] || "{}"),

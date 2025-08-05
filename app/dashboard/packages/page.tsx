@@ -185,8 +185,7 @@ export default function PackagesPage() {
       setMainImageFile(file);
       const url = URL.createObjectURL(file);
       setMainImagePreview(url);
-      // Don't overwrite uploadedImage with blob if editing, just for preview
-      setFormData((prev) => ({ ...prev, uploadedImage: prev.uploadedImage }));
+      setFormData((prev) => ({ ...prev, uploadedImage: url })); // set preview for formData too
       toast({
         title: "Image Uploaded",
         description: "Main image has been successfully uploaded.",
@@ -201,16 +200,14 @@ export default function PackagesPage() {
       // Add new files to galleryFiles
       setGalleryFiles((prev) => [...prev, ...fileArr]);
       // Add new previews for new files
-      setGalleryPreviews((prev) => [
-        ...prev,
-        ...fileArr.map((file) => URL.createObjectURL(file)),
-      ]);
+      const newPreviews = fileArr.map((file) => URL.createObjectURL(file));
+      setGalleryPreviews((prev) => [...prev, ...newPreviews]);
       // Add new blobs to gallery (for formData)
       setFormData((prev) => ({
         ...prev,
         gallery: [
           ...(Array.isArray(prev.gallery) ? prev.gallery : []),
-          ...fileArr.map((file) => URL.createObjectURL(file)),
+          ...newPreviews,
         ],
       }));
       toast({
@@ -268,7 +265,6 @@ export default function PackagesPage() {
       form.append("packageIncludes", JSON.stringify(formData.packageIncludes));
       form.append("hotels", JSON.stringify(formData.hotels));
 
-      // Main image: file > url > existing
       if (mainImageFile) {
         form.append("uploadedImage", mainImageFile);
       } else if (formData.image && formData.image.length > 0) {
@@ -280,17 +276,21 @@ export default function PackagesPage() {
         form.append("uploadedImage", formData.uploadedImage);
       }
 
-      // Gallery: always send all images, new and existing
+      const galleryUrls: string[] = [];
+      let hasGalleryFile = false;
       formData.gallery.forEach((img, i) => {
         if (img.startsWith("blob:")) {
-          // Find the corresponding file by preview url
           const fileIdx = galleryPreviews.findIndex((p) => p === img);
-          if (galleryFiles[fileIdx])
+          if (galleryFiles[fileIdx]) {
             form.append("gallery", galleryFiles[fileIdx]);
-        } else {
-          form.append("gallery", img);
+            hasGalleryFile = true;
+          }
+        } else if (img && img.length > 0) {
+          galleryUrls.push(img);
         }
       });
+
+      form.append("galleryUrls", JSON.stringify(galleryUrls));
 
       const method = editingPackage ? "PUT" : "POST";
       const url = editingPackage
@@ -362,15 +362,26 @@ export default function PackagesPage() {
     });
 
     setMainImageFile(null);
-    setMainImagePreview(
-      pkg.uploadedImage
-        ? `/uploads/${pkg.uploadedImage}`
-        : pkg.imageUrl
-        ? `/uploads/${pkg.imageUrl}`
-        : ""
-    );
+
+    let previewImg = "";
+    if (pkg.uploadedImage && pkg.uploadedImage.startsWith("http")) {
+      previewImg = pkg.uploadedImage;
+    } else if (pkg.uploadedImage) {
+      previewImg = `/uploads/${pkg.uploadedImage}`;
+    } else if (pkg.imageUrl && pkg.imageUrl.startsWith("http")) {
+      previewImg = pkg.imageUrl;
+    } else if (pkg.imageUrl) {
+      previewImg = `/uploads/${pkg.imageUrl}`;
+    }
+    setMainImagePreview(previewImg);
     setGalleryFiles([]);
-    setGalleryPreviews(galleryArr.map((img: string) => `/uploads/${img}`));
+    setGalleryPreviews(
+      galleryArr.map((img: string) => {
+        if (!img) return "/placeholder.svg";
+        if (img.startsWith("http") || img.startsWith("/")) return img;
+        return `/uploads/${img}`;
+      })
+    );
     setIsDialogOpen(true);
   };
 
@@ -484,11 +495,20 @@ export default function PackagesPage() {
   };
 
   const getDisplayImage = (pkg: Package) => {
-    return (
-      `/uploads/${pkg.uploadedImage}` ||
-      `/uploads/${pkg.imageUrl}` ||
-      "/placeholder.svg"
-    );
+    // If uploadedImage is a URL, use as is; else, use uploads path
+    if (pkg.uploadedImage && pkg.uploadedImage.startsWith("http")) {
+      return pkg.uploadedImage;
+    }
+    if (pkg.uploadedImage) {
+      return `/uploads/${pkg.uploadedImage}`;
+    }
+    if (pkg.imageUrl && pkg.imageUrl.startsWith("http")) {
+      return pkg.imageUrl;
+    }
+    if (pkg.imageUrl) {
+      return `/uploads/${pkg.imageUrl}`;
+    }
+    return "/placeholder.svg";
   };
 
   const getPreviewImage = () => {
@@ -505,8 +525,11 @@ export default function PackagesPage() {
       return `/uploads/${formData.uploadedImage}`;
     }
 
-    if (formData.image) {
+    if (formData.image && formData.image.startsWith("http")) {
       return formData.image;
+    }
+    if (formData.image) {
+      return `/uploads/${formData.image}`;
     }
     return "/placeholder.svg";
   };
