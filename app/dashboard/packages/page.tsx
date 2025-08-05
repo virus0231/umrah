@@ -85,6 +85,8 @@ const defaultPackageIncludes = [
 ];
 
 export default function PackagesPage() {
+  const [mainImageFile, setMainImageFile] = useState<File | null>(null);
+  const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
   const [categories, setCategories] = useState<string[]>(predefinedCategories);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -115,6 +117,34 @@ export default function PackagesPage() {
     hotelMakkahDetails: "",
     hotelMedinaDetails: "",
   });
+
+  const resetForm = () => {
+    setFormData({
+      title: "",
+      description: "",
+      image: "",
+      uploadedImage: "",
+      gallery: [],
+      stars: 1,
+      nights: 7,
+      hotels: {
+        makkah: [""],
+        medina: [""],
+      },
+      price: 0,
+      category: "",
+      packageIncludes: [...defaultPackageIncludes],
+      hotelMakkahDetails: "",
+      hotelMedinaDetails: "",
+    });
+    setEditingPackage(null);
+    setIsDialogOpen(false);
+    setShowNewCategoryInput(false);
+    setNewCategory("");
+
+    setMainImageFile(null);
+    setGalleryFiles([]);
+  };
 
   // Fetch packages from API
   const fetchPackages = async () => {
@@ -149,8 +179,12 @@ export default function PackagesPage() {
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const imageUrl = URL.createObjectURL(file);
-      setFormData({ ...formData, uploadedImage: imageUrl });
+      // const imageUrl = URL.createObjectURL(file);
+      // setFormData({ ...formData, uploadedImage: imageUrl });
+
+      setMainImageFile(file);
+      setFormData({ ...formData, uploadedImage: URL.createObjectURL(file) });
+
       toast({
         title: "Image Uploaded",
         description: "Main image has been successfully uploaded.",
@@ -161,31 +195,51 @@ export default function PackagesPage() {
   const handleGalleryUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
-      const newImages: string[] = [];
-      Array.from(files).forEach((file) => {
-        const imageUrl = URL.createObjectURL(file);
-        newImages.push(imageUrl);
-      });
+      // const newImages: string[] = [];
+      // Array.from(files).forEach((file) => {
+      //   const imageUrl = URL.createObjectURL(file);
+      //   newImages.push(imageUrl);
+      // });
+      // setFormData({
+      //   ...formData,
+      //   gallery: [
+      //     ...(Array.isArray(formData.gallery) ? formData.gallery : []),
+      //     ...newImages,
+      //   ],
+      // });
+
+      const fileArr = Array.from(files);
+
+      setGalleryFiles((prev) => [...prev, ...fileArr]);
       setFormData({
         ...formData,
         gallery: [
           ...(Array.isArray(formData.gallery) ? formData.gallery : []),
-          ...newImages,
+          ...fileArr.map((file) => URL.createObjectURL(file)),
         ],
       });
+
       toast({
         title: "Gallery Images Added",
-        description: `${newImages.length} image(s) added to gallery.`,
+        description: `${fileArr.length} image(s) added to gallery.`,
       });
     }
   };
 
+  // const removeGalleryImage = (index: number) => {
+  //   const currentGallery = Array.isArray(formData.gallery)
+  //     ? formData.gallery
+  //     : [];
+  //   const newGallery = currentGallery.filter((_, i) => i !== index);
+  //   setFormData({ ...formData, gallery: newGallery });
+  // };
+
   const removeGalleryImage = (index: number) => {
-    const currentGallery = Array.isArray(formData.gallery)
-      ? formData.gallery
-      : [];
-    const newGallery = currentGallery.filter((_, i) => i !== index);
-    setFormData({ ...formData, gallery: newGallery });
+    setFormData((prev) => ({
+      ...prev,
+      gallery: prev.gallery.filter((_, i) => i !== index),
+    }));
+    setGalleryFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const addNewCategory = () => {
@@ -220,17 +274,26 @@ export default function PackagesPage() {
       form.append("hotels", JSON.stringify(formData.hotels));
 
       // If uploadedImage is a file, append it
-      if (fileInputRef.current?.files?.[0]) {
-        form.append("uploadedImage", fileInputRef.current.files[0]);
+      // if (fileInputRef.current?.files?.[0]) {
+      //   form.append("uploadedImage", fileInputRef.current.files[0]);
+      // }
+
+      // // Add gallery images
+      // if (galleryInputRef.current?.files) {
+      //   for (const file of galleryInputRef.current.files) {
+      //     form.append("gallery", file);
+      //   }
+      // }
+
+      if (mainImageFile) {
+        form.append("uploadedImage", mainImageFile);
       }
 
-      // Add gallery images
-      if (galleryInputRef.current?.files) {
-        for (const file of galleryInputRef.current.files) {
+      if (galleryFiles) {
+        galleryFiles.forEach((file) => {
           form.append("gallery", file);
-        }
+        });
       }
-
       const method = editingPackage ? "PUT" : "POST";
       const url = editingPackage
         ? `/api/packages/${editingPackage.id}`
@@ -266,36 +329,11 @@ export default function PackagesPage() {
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      title: "",
-      description: "",
-      image: "",
-      uploadedImage: "",
-      gallery: [],
-      stars: 1,
-      nights: 7,
-      hotels: {
-        makkah: [""],
-        medina: [""],
-      },
-      price: 0,
-      category: "",
-      packageIncludes: [...defaultPackageIncludes],
-      hotelMakkahDetails: "",
-      hotelMedinaDetails: "",
-    });
-    setEditingPackage(null);
-    setIsDialogOpen(false);
-    setShowNewCategoryInput(false);
-    setNewCategory("");
-  };
-
   const handleEdit = (pkg: Package) => {
     setEditingPackage(pkg);
 
-    let a: any  = pkg.hotels;
-    a = JSON.parse(a)
+    let a: any = pkg.hotels;
+    a = JSON.parse(a);
 
     setFormData({
       title: pkg.title,
@@ -309,8 +347,8 @@ export default function PackagesPage() {
       stars: pkg.starRating || 1,
       nights: pkg.nights || 7,
       hotels: {
-        makkah: (a.makkah || [""]),
-        medina: (a.medina || [""]),
+        makkah: a.makkah || [""],
+        medina: a.medina || [""],
       },
       price: pkg.price || 0,
       category: pkg.category || "",
@@ -321,7 +359,6 @@ export default function PackagesPage() {
       hotelMedinaDetails: pkg.hotelMedinaDetails || "",
     });
     setIsDialogOpen(true);
-
   };
 
   const handleDelete = async (packageId: string) => {
@@ -442,7 +479,6 @@ export default function PackagesPage() {
   };
 
   const getPreviewImage = () => {
-   
     if (formData.uploadedImage?.startsWith("blob:")) {
       return formData.uploadedImage;
     }
