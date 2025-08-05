@@ -4,12 +4,6 @@ import { Package } from "@/models";
 import formidable from "formidable";
 import { type NextRequest, NextResponse } from "next/server";
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
 function nextRequestToNodeRequest(request: NextRequest) {
   const readable = Readable.fromWeb(
     request.body as any
@@ -57,20 +51,41 @@ export async function POST(request: NextRequest) {
   try {
     const { fields, files }: any = await parseForm(request);
 
-    const imageUrl =
-      (files.uploadedImage?.[0] &&
-        path.basename(files.uploadedImage[0].filepath)) ||
-      (files.uploadedImage && path.basename(files.uploadedImage.filepath)) ||
-      "";
+    let imageUrl = "";
+    if (files.uploadedImage) {
+      if (Array.isArray(files.uploadedImage)) {
+        imageUrl = path.basename(files.uploadedImage[0].filepath);
+      } else if (files.uploadedImage.filepath) {
+        imageUrl = path.basename(files.uploadedImage.filepath);
+      }
+    } else if (fields.uploadedImage) {
+      // If it's a URL, save as is
+      imageUrl = Array.isArray(fields.uploadedImage)
+        ? fields.uploadedImage[0]
+        : fields.uploadedImage;
+    }
 
-    const gallery = Array.isArray(files.gallery)
-      ? files.gallery.map((file: any) => path.basename(file.filepath))
-      : files.gallery
-      ? [path.basename(files.gallery.filepath)]
-      : [];
-
-    // const packageData = await request.json();
-    // console.log("Creating package with data:", packageData);
+    let gallery: string[] = [];
+    if (files.gallery) {
+      if (Array.isArray(files.gallery)) {
+        gallery = files.gallery.map((file: any) =>
+          path.basename(file.filepath)
+        );
+      } else if (files.gallery.filepath) {
+        gallery = [path.basename(files.gallery.filepath)];
+      }
+    }
+    // Always merge with any string-based gallery images (URLs or filenames)
+    if (fields.gallery) {
+      if (Array.isArray(fields.gallery)) {
+        // Only add those that are not already in gallery (avoid duplicates)
+        fields.gallery.forEach((g: string) => {
+          if (!gallery.includes(g)) gallery.push(g);
+        });
+      } else if (typeof fields.gallery === "string") {
+        if (!gallery.includes(fields.gallery)) gallery.push(fields.gallery);
+      }
+    }
 
     console.log("Creating package with data:", fields);
 
@@ -100,3 +115,9 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};

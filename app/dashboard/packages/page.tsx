@@ -86,7 +86,9 @@ const defaultPackageIncludes = [
 
 export default function PackagesPage() {
   const [mainImageFile, setMainImageFile] = useState<File | null>(null);
+  const [mainImagePreview, setMainImagePreview] = useState<string>("");
   const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
+  const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
   const [categories, setCategories] = useState<string[]>(predefinedCategories);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -141,9 +143,10 @@ export default function PackagesPage() {
     setIsDialogOpen(false);
     setShowNewCategoryInput(false);
     setNewCategory("");
-
     setMainImageFile(null);
+    setMainImagePreview("");
     setGalleryFiles([]);
+    setGalleryPreviews([]);
   };
 
   // Fetch packages from API
@@ -179,12 +182,11 @@ export default function PackagesPage() {
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // const imageUrl = URL.createObjectURL(file);
-      // setFormData({ ...formData, uploadedImage: imageUrl });
-
       setMainImageFile(file);
-      setFormData({ ...formData, uploadedImage: URL.createObjectURL(file) });
-
+      const url = URL.createObjectURL(file);
+      setMainImagePreview(url);
+      // Don't overwrite uploadedImage with blob if editing, just for preview
+      setFormData((prev) => ({ ...prev, uploadedImage: prev.uploadedImage }));
       toast({
         title: "Image Uploaded",
         description: "Main image has been successfully uploaded.",
@@ -195,30 +197,22 @@ export default function PackagesPage() {
   const handleGalleryUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
-      // const newImages: string[] = [];
-      // Array.from(files).forEach((file) => {
-      //   const imageUrl = URL.createObjectURL(file);
-      //   newImages.push(imageUrl);
-      // });
-      // setFormData({
-      //   ...formData,
-      //   gallery: [
-      //     ...(Array.isArray(formData.gallery) ? formData.gallery : []),
-      //     ...newImages,
-      //   ],
-      // });
-
       const fileArr = Array.from(files);
-
+      // Add new files to galleryFiles
       setGalleryFiles((prev) => [...prev, ...fileArr]);
-      setFormData({
-        ...formData,
+      // Add new previews for new files
+      setGalleryPreviews((prev) => [
+        ...prev,
+        ...fileArr.map((file) => URL.createObjectURL(file)),
+      ]);
+      // Add new blobs to gallery (for formData)
+      setFormData((prev) => ({
+        ...prev,
         gallery: [
-          ...(Array.isArray(formData.gallery) ? formData.gallery : []),
+          ...(Array.isArray(prev.gallery) ? prev.gallery : []),
           ...fileArr.map((file) => URL.createObjectURL(file)),
         ],
-      });
-
+      }));
       toast({
         title: "Gallery Images Added",
         description: `${fileArr.length} image(s) added to gallery.`,
@@ -237,9 +231,12 @@ export default function PackagesPage() {
   const removeGalleryImage = (index: number) => {
     setFormData((prev) => ({
       ...prev,
-      gallery: prev.gallery.filter((_, i) => i !== index),
+      gallery: Array.isArray(prev.gallery)
+        ? prev.gallery.filter((_, i) => i !== index)
+        : [],
     }));
     setGalleryFiles((prev) => prev.filter((_, i) => i !== index));
+    setGalleryPreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
   const addNewCategory = () => {
@@ -258,10 +255,8 @@ export default function PackagesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
-
     try {
       const form = new FormData();
-
       form.append("title", formData.title);
       form.append("description", formData.description);
       form.append("stars", formData.stars.toString());
@@ -273,48 +268,47 @@ export default function PackagesPage() {
       form.append("packageIncludes", JSON.stringify(formData.packageIncludes));
       form.append("hotels", JSON.stringify(formData.hotels));
 
-      // If uploadedImage is a file, append it
-      // if (fileInputRef.current?.files?.[0]) {
-      //   form.append("uploadedImage", fileInputRef.current.files[0]);
-      // }
-
-      // // Add gallery images
-      // if (galleryInputRef.current?.files) {
-      //   for (const file of galleryInputRef.current.files) {
-      //     form.append("gallery", file);
-      //   }
-      // }
-
+      // Main image: file > url > existing
       if (mainImageFile) {
         form.append("uploadedImage", mainImageFile);
+      } else if (formData.image && formData.image.length > 0) {
+        form.append("uploadedImage", formData.image);
+      } else if (
+        formData.uploadedImage &&
+        !formData.uploadedImage.startsWith("blob:")
+      ) {
+        form.append("uploadedImage", formData.uploadedImage);
       }
 
-      if (galleryFiles) {
-        galleryFiles.forEach((file) => {
-          form.append("gallery", file);
-        });
-      }
+      // Gallery: always send all images, new and existing
+      formData.gallery.forEach((img, i) => {
+        if (img.startsWith("blob:")) {
+          // Find the corresponding file by preview url
+          const fileIdx = galleryPreviews.findIndex((p) => p === img);
+          if (galleryFiles[fileIdx])
+            form.append("gallery", galleryFiles[fileIdx]);
+        } else {
+          form.append("gallery", img);
+        }
+      });
+
       const method = editingPackage ? "PUT" : "POST";
       const url = editingPackage
         ? `/api/packages/${editingPackage.id}`
         : "/api/packages";
-
       const response = await fetch(url, {
         method,
         body: form,
       });
-
       if (!response.ok) {
         throw new Error(editingPackage ? "Update failed" : "Creation failed");
       }
-
       toast({
         title: editingPackage ? "Package Updated" : "Package Created",
         description: `Package has been successfully ${
           editingPackage ? "updated" : "created"
         }.`,
       });
-
       await fetchPackages();
       resetForm();
     } catch (error) {
@@ -331,19 +325,27 @@ export default function PackagesPage() {
 
   const handleEdit = (pkg: Package) => {
     setEditingPackage(pkg);
-
     let a: any = pkg.hotels;
-    a = JSON.parse(a);
-
+    a = typeof a === "string" ? JSON.parse(a) : a;
+    let galleryArr: string[] = [];
+    if (Array.isArray(pkg.gallery)) {
+      galleryArr = pkg.gallery;
+    } else if (typeof pkg.gallery === "string") {
+      try {
+        galleryArr = JSON.parse(pkg.gallery);
+        if (!Array.isArray(galleryArr)) galleryArr = [];
+      } catch {
+        galleryArr = [];
+      }
+    } else {
+      galleryArr = [];
+    }
     setFormData({
       title: pkg.title,
       description: pkg.description || "",
       image: pkg.imageUrl || "",
       uploadedImage: pkg.uploadedImage || "",
-      gallery:
-        typeof pkg.gallery === "string"
-          ? JSON.parse(pkg.gallery)
-          : pkg.gallery || [],
+      gallery: galleryArr,
       stars: pkg.starRating || 1,
       nights: pkg.nights || 7,
       hotels: {
@@ -358,6 +360,17 @@ export default function PackagesPage() {
       hotelMakkahDetails: pkg.hotelMakkahDetails || "",
       hotelMedinaDetails: pkg.hotelMedinaDetails || "",
     });
+
+    setMainImageFile(null);
+    setMainImagePreview(
+      pkg.uploadedImage
+        ? `/uploads/${pkg.uploadedImage}`
+        : pkg.imageUrl
+        ? `/uploads/${pkg.imageUrl}`
+        : ""
+    );
+    setGalleryFiles([]);
+    setGalleryPreviews(galleryArr.map((img: string) => `/uploads/${img}`));
     setIsDialogOpen(true);
   };
 
@@ -479,18 +492,22 @@ export default function PackagesPage() {
   };
 
   const getPreviewImage = () => {
+    if (mainImagePreview) return mainImagePreview;
+
     if (formData.uploadedImage?.startsWith("blob:")) {
       return formData.uploadedImage;
     }
 
-    if (formData.uploadedImage) {
+    if (formData.uploadedImage && formData.uploadedImage.length > 0) {
+      if (formData.uploadedImage.startsWith("http")) {
+        return formData.uploadedImage;
+      }
       return `/uploads/${formData.uploadedImage}`;
     }
 
     if (formData.image) {
       return formData.image;
     }
-
     return "/placeholder.svg";
   };
 
@@ -715,34 +732,28 @@ export default function PackagesPage() {
                         className="hidden"
                       />
 
-                      {Array.isArray(formData.gallery) &&
-                        formData.gallery.length > 0 && (
-                          <div className="grid grid-cols-4 gap-2">
-                            {formData.gallery.map((image, index) => (
-                              <div key={index} className="relative">
-                                <img
-                                  src={
-                                    editingPackage
-                                      ? `/uploads/${image}` ||
-                                        "/placeholder.svg"
-                                      : image || "/placeholder.svg"
-                                  }
-                                  alt={`Gallery ${index + 1}`}
-                                  className="w-full h-20 object-cover rounded border"
-                                />
-                                <Button
-                                  type="button"
-                                  variant="destructive"
-                                  size="sm"
-                                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
-                                  onClick={() => removeGalleryImage(index)}
-                                >
-                                  <X className="w-3 h-3" />
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                      {galleryPreviews.length > 0 && (
+                        <div className="grid grid-cols-4 gap-2">
+                          {galleryPreviews.map((image, index) => (
+                            <div key={index} className="relative">
+                              <img
+                                src={image || "/placeholder.svg"}
+                                alt={`Gallery ${index + 1}`}
+                                className="w-full h-20 object-cover rounded border"
+                              />
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
+                                onClick={() => removeGalleryImage(index)}
+                              >
+                                <X className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
 
