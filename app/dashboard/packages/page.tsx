@@ -116,6 +116,31 @@ export default function PackagesPage() {
     hotelMedinaDetails: "",
   });
 
+  const resetForm = () => {
+    setFormData({
+      title: "",
+      description: "",
+      image: "",
+      uploadedImage: "",
+      gallery: [],
+      stars: 1,
+      nights: 7,
+      hotels: {
+        makkah: [""],
+        medina: [""],
+      },
+      price: 0,
+      category: "",
+      packageIncludes: [...defaultPackageIncludes],
+      hotelMakkahDetails: "",
+      hotelMedinaDetails: "",
+    });
+    setEditingPackage(null);
+    setIsDialogOpen(false);
+    setShowNewCategoryInput(false);
+    setNewCategory("");
+  };
+
   // Fetch packages from API
   const fetchPackages = async () => {
     try {
@@ -266,36 +291,11 @@ export default function PackagesPage() {
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      title: "",
-      description: "",
-      image: "",
-      uploadedImage: "",
-      gallery: [],
-      stars: 1,
-      nights: 7,
-      hotels: {
-        makkah: [""],
-        medina: [""],
-      },
-      price: 0,
-      category: "",
-      packageIncludes: [...defaultPackageIncludes],
-      hotelMakkahDetails: "",
-      hotelMedinaDetails: "",
-    });
-    setEditingPackage(null);
-    setIsDialogOpen(false);
-    setShowNewCategoryInput(false);
-    setNewCategory("");
-  };
-
   const handleEdit = (pkg: Package) => {
     setEditingPackage(pkg);
 
-    let a: any  = pkg.hotels;
-    a = JSON.parse(a)
+    let a: any = pkg.hotels;
+    a = JSON.parse(a);
 
     setFormData({
       title: pkg.title,
@@ -309,8 +309,8 @@ export default function PackagesPage() {
       stars: pkg.starRating || 1,
       nights: pkg.nights || 7,
       hotels: {
-        makkah: (a.makkah || [""]),
-        medina: (a.medina || [""]),
+        makkah: a.makkah || [""],
+        medina: a.medina || [""],
       },
       price: pkg.price || 0,
       category: pkg.category || "",
@@ -321,7 +321,6 @@ export default function PackagesPage() {
       hotelMedinaDetails: pkg.hotelMedinaDetails || "",
     });
     setIsDialogOpen(true);
-
   };
 
   const handleDelete = async (packageId: string) => {
@@ -442,7 +441,6 @@ export default function PackagesPage() {
   };
 
   const getPreviewImage = () => {
-   
     if (formData.uploadedImage?.startsWith("blob:")) {
       return formData.uploadedImage;
     }
