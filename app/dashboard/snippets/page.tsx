@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,195 +9,64 @@ import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Edit, Trash2, Copy, Monitor, Tablet, Smartphone } from "lucide-react"
+import { Plus, Edit, Trash2, Copy, Monitor, Tablet, Smartphone, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 interface Snippet {
-  id: string
+  id: number
   title: string
   description: string
   snippetCode: string
-  html: string
-  css: string
-  javascript: string
+  htmlContent: string
+  cssContent: string
+  javascriptContent: string
   createdAt: string
   updatedAt: string
 }
 
-const initialSnippets: Snippet[] = [
-  {
-    id: "1",
-    title: "Hero Section",
-    description: "Main hero section with call-to-action button",
-    snippetCode: "hero_section_001",
-    html: `<div class="hero-banner">
-  <h1>Welcome to Hajj & Umrah Services</h1>
-  <p>Your trusted partner for spiritual journeys</p>
-  <button class="cta-btn">Book Your Journey</button>
-</div>`,
-    css: `.hero-banner {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  text-align: center;
-  padding: 80px 20px;
-  border-radius: 10px;
-}
-
-.hero-banner h1 {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-  font-weight: bold;
-}
-
-.hero-banner p {
-  font-size: 1.2rem;
-  margin-bottom: 2rem;
-  opacity: 0.9;
-}
-
-.cta-btn {
-  background: #10b981;
-  color: white;
-  padding: 15px 30px;
-  border: none;
-  border-radius: 8px;
-  font-size: 1.1rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.cta-btn:hover {
-  background: #059669;
-  transform: translateY(-2px);
-}`,
-    javascript: `document.addEventListener('DOMContentLoaded', function() {
-  const ctaBtn = document.querySelector('.cta-btn');
-  if (ctaBtn) {
-    ctaBtn.addEventListener('click', function() {
-      // Add your booking logic here
-      alert('Redirecting to booking page...');
-    });
-  }
-});`,
-    createdAt: "2024-01-15",
-    updatedAt: "2024-01-20",
-  },
-  {
-    id: "2",
-    title: "Package Card",
-    description: "Reusable package card component",
-    snippetCode: "package_card_001",
-    html: `<div class="package-card">
-  <div class="package-image">
-    <img src="/placeholder.svg?height=200&width=300" alt="Package" />
-    <div class="rating">★★★★★</div>
-  </div>
-  <div class="package-content">
-    <h3>Executive Umrah Package</h3>
-    <p class="nights">7 Nights</p>
-    <p class="price">£1,560</p>
-    <button class="quote-btn">Get Quote</button>
-  </div>
-</div>`,
-    css: `.package-card {
-  background: white;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s ease;
-}
-
-.package-card:hover {
-  transform: translateY(-5px);
-}
-
-.package-image {
-  position: relative;
-  height: 200px;
-  overflow: hidden;
-}
-
-.package-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.rating {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background: white;
-  padding: 5px 10px;
-  border-radius: 20px;
-  color: #fbbf24;
-}
-
-.package-content {
-  padding: 20px;
-}
-
-.package-content h3 {
-  font-size: 1.2rem;
-  font-weight: bold;
-  margin-bottom: 10px;
-}
-
-.nights {
-  color: #6b7280;
-  margin-bottom: 10px;
-}
-
-.price {
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: #10b981;
-  margin-bottom: 15px;
-}
-
-.quote-btn {
-  width: 100%;
-  background: #10b981;
-  color: white;
-  padding: 12px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-}
-
-.quote-btn:hover {
-  background: #059669;
-}`,
-    javascript: `document.addEventListener('DOMContentLoaded', function() {
-  const quoteBtns = document.querySelectorAll('.quote-btn');
-  quoteBtns.forEach(btn => {
-    btn.addEventListener('click', function() {
-      // Add quote logic here
-      console.log('Quote requested for package');
-    });
-  });
-});`,
-    createdAt: "2024-01-16",
-    updatedAt: "2024-01-18",
-  },
-]
-
 export default function SnippetsPage() {
-  const [snippets, setSnippets] = useState<Snippet[]>(initialSnippets)
+  const [snippets, setSnippets] = useState<Snippet[]>([])
   const [selectedSnippet, setSelectedSnippet] = useState<Snippet | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [viewMode, setViewMode] = useState<"desktop" | "tablet" | "mobile">("desktop")
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const { toast } = useToast()
 
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     snippetCode: "",
-    html: "",
-    css: "",
-    javascript: "",
+    htmlContent: "",
+    cssContent: "",
+    javascriptContent: "",
   })
+
+  // Fetch snippets from API
+  const fetchSnippets = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch("/api/snippets")
+      if (!response.ok) {
+        throw new Error("Failed to fetch snippets")
+      }
+      const data = await response.json()
+      setSnippets(data)
+    } catch (error) {
+      console.error("Error fetching snippets:", error)
+      toast({
+        title: "Error",
+        description: "Failed to fetch snippets",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchSnippets()
+  }, [])
 
   const generateSnippetCode = (title: string) => {
     return (
@@ -215,9 +84,9 @@ export default function SnippetsPage() {
       title: "",
       description: "",
       snippetCode: "",
-      html: "",
-      css: "",
-      javascript: "",
+      htmlContent: "",
+      cssContent: "",
+      javascriptContent: "",
     })
     setSelectedSnippet(null)
     setIsDialogOpen(true)
@@ -229,53 +98,102 @@ export default function SnippetsPage() {
       title: snippet.title,
       description: snippet.description,
       snippetCode: snippet.snippetCode,
-      html: snippet.html,
-      css: snippet.css,
-      javascript: snippet.javascript,
+      htmlContent: snippet.htmlContent,
+      cssContent: snippet.cssContent,
+      javascriptContent: snippet.javascriptContent,
     })
     setIsDialogOpen(true)
   }
 
-  const handleSaveSnippet = () => {
-    const snippetCode = formData.snippetCode || generateSnippetCode(formData.title)
+  const handleSaveSnippet = async () => {
+    try {
+      setSaving(true)
+      const snippetCode = formData.snippetCode || generateSnippetCode(formData.title)
 
-    if (selectedSnippet) {
-      // Update existing snippet
-      setSnippets(
-        snippets.map((snippet) =>
-          snippet.id === selectedSnippet.id
-            ? { ...snippet, ...formData, snippetCode, updatedAt: new Date().toISOString().split("T")[0] }
-            : snippet,
-        ),
-      )
-      toast({
-        title: "Snippet Updated",
-        description: "Snippet has been successfully updated.",
-      })
-    } else {
-      // Create new snippet
-      const newSnippet: Snippet = {
-        id: Date.now().toString(),
-        ...formData,
+      const payload = {
+        title: formData.title,
+        description: formData.description,
         snippetCode,
-        createdAt: new Date().toISOString().split("T")[0],
-        updatedAt: new Date().toISOString().split("T")[0],
+        htmlContent: formData.htmlContent,
+        cssContent: formData.cssContent,
+        javascriptContent: formData.javascriptContent,
       }
-      setSnippets([...snippets, newSnippet])
+
+      let response
+      if (selectedSnippet) {
+        // Update existing snippet
+        response = await fetch(`/api/snippets/${selectedSnippet.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        })
+      } else {
+        // Create new snippet
+        response = await fetch("/api/snippets", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        })
+      }
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to save snippet")
+      }
+
       toast({
-        title: "Snippet Created",
-        description: `New snippet created with code: ${snippetCode}`,
+        title: selectedSnippet ? "Snippet Updated" : "Snippet Created",
+        description: selectedSnippet
+          ? "Snippet has been successfully updated."
+          : `New snippet created with code: ${snippetCode}`,
       })
+
+      setIsDialogOpen(false)
+      fetchSnippets() // Refresh the list
+    } catch (error) {
+      console.error("Error saving snippet:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to save snippet",
+        variant: "destructive",
+      })
+    } finally {
+      setSaving(false)
     }
-    setIsDialogOpen(false)
   }
 
-  const handleDeleteSnippet = (snippetId: string) => {
-    setSnippets(snippets.filter((snippet) => snippet.id !== snippetId))
-    toast({
-      title: "Snippet Deleted",
-      description: "Snippet has been successfully deleted.",
-    })
+  const handleDeleteSnippet = async (snippetId: number) => {
+    if (!confirm("Are you sure you want to delete this snippet?")) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/snippets/${snippetId}`, {
+        method: "DELETE",
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to delete snippet")
+      }
+
+      toast({
+        title: "Snippet Deleted",
+        description: "Snippet has been successfully deleted.",
+      })
+
+      fetchSnippets() // Refresh the list
+    } catch (error) {
+      console.error("Error deleting snippet:", error)
+      toast({
+        title: "Error",
+        description: "Failed to delete snippet",
+        variant: "destructive",
+      })
+    }
   }
 
   const copySnippetCode = (code: string) => {
@@ -297,20 +215,13 @@ export default function SnippetsPage() {
     }
   }
 
-  const renderPreview = (snippet: Snippet) => {
-    const combinedCode = `
-      <style>${snippet.css}</style>
-      ${snippet.html}
-      <script>${snippet.javascript}</script>
-    `
-
+  if (loading) {
     return (
-      <iframe
-        srcDoc={combinedCode}
-        style={getPreviewStyles()}
-        className="border rounded-lg bg-white"
-        title={`Preview of ${snippet.title}`}
-      />
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin" />
+        </div>
+      </div>
     )
   }
 
@@ -328,53 +239,65 @@ export default function SnippetsPage() {
       </div>
 
       {/* Snippets Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {snippets.map((snippet) => (
-          <Card key={snippet.id} className="hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div>
-                  <CardTitle className="text-lg">{snippet.title}</CardTitle>
-                  <p className="text-sm text-gray-600 mt-1">{snippet.description}</p>
-                </div>
-                <Badge
-                  variant="outline"
-                  className="cursor-pointer"
-                  onClick={() => copySnippetCode(snippet.snippetCode)}
-                >
-                  <Copy className="w-3 h-3 mr-1" />
-                  {snippet.snippetCode}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="bg-gray-100 rounded-lg p-4 h-32 overflow-hidden">
-                  <div
-                    dangerouslySetInnerHTML={{ __html: snippet.html }}
-                    className="text-xs scale-75 origin-top-left"
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => handleEditSnippet(snippet)} className="flex-1">
-                    <Edit className="w-4 h-4 mr-2" />
-                    Edit
-                  </Button>
-                  <Button
+      {snippets.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-gray-500 mb-4">No snippets found</p>
+          <Button onClick={handleCreateSnippet} className="bg-blue-600 hover:bg-blue-700">
+            <Plus className="w-4 h-4 mr-2" />
+            Create Your First Snippet
+          </Button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {snippets.map((snippet) => (
+            <Card key={snippet.id} className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle className="text-lg">{snippet.title}</CardTitle>
+                    <p className="text-sm text-gray-600 mt-1">{snippet.description}</p>
+                  </div>
+                  <Badge
                     variant="outline"
-                    size="sm"
-                    onClick={() => handleDeleteSnippet(snippet.id)}
-                    className="text-red-600"
+                    className="cursor-pointer"
+                    onClick={() => copySnippetCode(snippet.snippetCode)}
                   >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                    <Copy className="w-3 h-3 mr-1" />
+                    {snippet.snippetCode}
+                  </Badge>
                 </div>
-                <div className="text-xs text-gray-500">Updated: {snippet.updatedAt}</div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="bg-gray-100 rounded-lg p-4 h-32 overflow-hidden">
+                    <div
+                      dangerouslySetInnerHTML={{ __html: snippet.htmlContent }}
+                      className="text-xs scale-75 origin-top-left"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => handleEditSnippet(snippet)} className="flex-1">
+                      <Edit className="w-4 h-4 mr-2" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeleteSnippet(snippet.id)}
+                      className="text-red-600"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Updated: {new Date(snippet.updatedAt).toLocaleDateString()}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -394,6 +317,7 @@ export default function SnippetsPage() {
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     placeholder="Enter snippet title"
+                    required
                   />
                 </div>
                 <div>
@@ -427,8 +351,8 @@ export default function SnippetsPage() {
 
                 <TabsContent value="html">
                   <Textarea
-                    value={formData.html}
-                    onChange={(e) => setFormData({ ...formData, html: e.target.value })}
+                    value={formData.htmlContent}
+                    onChange={(e) => setFormData({ ...formData, htmlContent: e.target.value })}
                     placeholder="Enter HTML code"
                     rows={20}
                     className="font-mono text-sm"
@@ -437,8 +361,8 @@ export default function SnippetsPage() {
 
                 <TabsContent value="css">
                   <Textarea
-                    value={formData.css}
-                    onChange={(e) => setFormData({ ...formData, css: e.target.value })}
+                    value={formData.cssContent}
+                    onChange={(e) => setFormData({ ...formData, cssContent: e.target.value })}
                     placeholder="Enter CSS code"
                     rows={20}
                     className="font-mono text-sm"
@@ -447,8 +371,8 @@ export default function SnippetsPage() {
 
                 <TabsContent value="javascript">
                   <Textarea
-                    value={formData.javascript}
-                    onChange={(e) => setFormData({ ...formData, javascript: e.target.value })}
+                    value={formData.javascriptContent}
+                    onChange={(e) => setFormData({ ...formData, javascriptContent: e.target.value })}
                     placeholder="Enter JavaScript code"
                     rows={20}
                     className="font-mono text-sm"
@@ -489,9 +413,9 @@ export default function SnippetsPage() {
               <div className="border rounded-lg overflow-hidden">
                 <iframe
                   srcDoc={`
-                    <style>${formData.css}</style>
-                    ${formData.html}
-                    <script>${formData.javascript}</script>
+                    <style>${formData.cssContent}</style>
+                    ${formData.htmlContent}
+                    <script>${formData.javascriptContent}</script>
                   `}
                   style={getPreviewStyles()}
                   className="bg-white"
@@ -520,10 +444,19 @@ export default function SnippetsPage() {
           </div>
 
           <div className="flex gap-2 pt-4">
-            <Button onClick={handleSaveSnippet} className="flex-1">
-              {selectedSnippet ? "Update Snippet" : "Create Snippet"}
+            <Button onClick={handleSaveSnippet} className="flex-1" disabled={saving || !formData.title}>
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  {selectedSnippet ? "Updating..." : "Creating..."}
+                </>
+              ) : selectedSnippet ? (
+                "Update Snippet"
+              ) : (
+                "Create Snippet"
+              )}
             </Button>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={saving}>
               Cancel
             </Button>
           </div>
