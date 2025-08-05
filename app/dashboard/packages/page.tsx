@@ -201,79 +201,6 @@ export default function PackagesPage() {
     }
   };
 
-  const handleSubmit23 = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-
-    try {
-      const packageData = {
-        title: formData.title,
-        description: formData.description,
-        image: formData.uploadedImage || formData.image,
-        uploadedImage: formData.uploadedImage,
-        gallery: formData.gallery,
-        stars: formData.stars,
-        nights: formData.nights,
-        hotels: formData.hotels,
-        price: formData.price,
-        category: formData.category,
-        packageIncludes: formData.packageIncludes,
-        hotelMakkahDetails: formData.hotelMakkahDetails,
-        hotelMedinaDetails: formData.hotelMedinaDetails,
-      };
-
-      if (editingPackage) {
-        // For updates, you'll need to implement PUT endpoint in your API
-        const response = await fetch(`/api/packages/${editingPackage.id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(packageData),
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to update package");
-        }
-
-        toast({
-          title: "Package Updated",
-          description: "Package has been successfully updated.",
-        });
-      } else {
-        const response = await fetch("/api/packages", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(packageData),
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to create package");
-        }
-
-        toast({
-          title: "Package Created",
-          description: "New package has been successfully created.",
-        });
-      }
-
-      // Refresh the packages list
-      await fetchPackages();
-      resetForm();
-    } catch (error) {
-      console.error("Error saving package:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save package. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -367,6 +294,9 @@ export default function PackagesPage() {
   const handleEdit = (pkg: Package) => {
     setEditingPackage(pkg);
 
+    let a: any  = pkg.hotels;
+    a = JSON.parse(a)
+
     setFormData({
       title: pkg.title,
       description: pkg.description || "",
@@ -378,7 +308,10 @@ export default function PackagesPage() {
           : pkg.gallery || [],
       stars: pkg.starRating || 1,
       nights: pkg.nights || 7,
-      hotels: pkg.hotels || { makkah: [""], medina: [""] },
+      hotels: {
+        makkah: (a.makkah || [""]),
+        medina: (a.medina || [""]),
+      },
       price: pkg.price || 0,
       category: pkg.category || "",
       packageIncludes: Array.isArray(pkg.packageIncludes)
@@ -388,6 +321,7 @@ export default function PackagesPage() {
       hotelMedinaDetails: pkg.hotelMedinaDetails || "",
     });
     setIsDialogOpen(true);
+
   };
 
   const handleDelete = async (packageId: string) => {

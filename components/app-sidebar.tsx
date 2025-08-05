@@ -53,11 +53,11 @@ const data = {
           url: "/dashboard/forms",
           icon: FileText,
         },
-        {
-          title: "Page Editor",
-          url: "/dashboard/pages",
-          icon: Edit,
-        },
+        // {
+        //   title: "Page Editor",
+        //   url: "/dashboard/pages",
+        //   icon: Edit,
+        // },
         {
           title: "Snippet Editor",
           url: "/dashboard/snippets",
@@ -78,11 +78,11 @@ const data = {
           url: "/dashboard/flying-partners",
           icon: Plane,
         },
-        {
-          title: "Contact Page",
-          url: "/dashboard/contact",
-          icon: Phone,
-        },
+        // {
+        //   title: "Contact Page",
+        //   url: "/dashboard/contact",
+        //   icon: Phone,
+        // },
         {
           title: "Packages",
           url: "/dashboard/packages",

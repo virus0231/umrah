@@ -355,6 +355,7 @@ export default function FooterPage() {
                 </Button>
               </div>
             </div>
+          </div>
           </CardHeader>
           <CardContent>
             <div className="border rounded-lg overflow-hidden">{renderFooterPreview()}</div>
@@ -635,6 +636,5 @@ export default function FooterPage() {
           </Tabs>
         </div>
       </div>
-    </div>
-  )
+  );
 }
